@@ -1,4 +1,6 @@
 library(ggplot2)
+library(dplyr)
+library(readxl)
 library(ggpattern)
 library(truncnorm)
 library(patchwork)
@@ -55,9 +57,9 @@ Phenology <- read_excel("Supplementary_data.xlsx", sheet = 'Uni_vs_Bimodal')
 yexpression <- (expression(atop("Average reproductive", paste("activity time ( ",bar("h"["a"])," )"))))
 
 p1 <- ggplot(data=Phenology)+
-  geom_abline(intercept = 0, size=1.5, linetype = "dashed", colour="gray")+
+  geom_abline(intercept = 0, linewidth=1.5, linetype = "dashed", colour="gray")+
   geom_point(data=Phenology, size=4,shape=16, colour="darkolivegreen3",aes(x=E,y=Uni))+
-  geom_line(data=Phenology, size=1, colour="darkolivegreen3",aes(x=E,y=Uni))+
+  geom_line(data=Phenology, linewidth=1, colour="darkolivegreen3",aes(x=E,y=Uni))+
   geom_errorbar(aes(E,ymin=Uni_min, ymax=Uni_max), width = 0.02) +
   xlab(expression(paste("Emergence time (",italic(e), ")"))) + ylab(yexpression) +
   theme_classic()+
@@ -65,11 +67,11 @@ p1 <- ggplot(data=Phenology)+
 
 
 p2 <- ggplot(data=Phenology)+
-  geom_abline(intercept = 0, size=1.5, linetype = "dashed", colour="gray")+
+  geom_abline(intercept = 0, linewidth=1.5, linetype = "dashed", colour="gray")+
   geom_point(data=Phenology, size=4,shape=15, colour="#00bfc4",aes(x=E,y=Bi_Late))+
   geom_point(data=Phenology, size=4,shape=17, colour="#F8766D",aes(x=E,y=Bi_Early))+
-  geom_line(data=Phenology, size=1, colour="#00bfc4",aes(x=E,y=Bi_Late))+
-  geom_line(data=Phenology, size=1, colour="#F8766D",aes(x=E,y=Bi_Early))+
+  geom_line(data=Phenology, linewidth=1, colour="#00bfc4",aes(x=E,y=Bi_Late))+
+  geom_line(data=Phenology, linewidth=1, colour="#F8766D",aes(x=E,y=Bi_Early))+
   geom_errorbar(aes(E,ymin=Bi_Late_min, ymax=Bi_Late_max), width = 0.02) +
   geom_errorbar(aes(E,ymin=Bi_Early_min, ymax=Bi_Early_max), width = 0.02) +
   xlab(expression(paste("Emergence time (",italic(e), ")"))) + ylab(" ")+
@@ -97,12 +99,12 @@ ggplot(data=G, aes(G))+
 
 # Figure S 4: Effect of the emergence time e on the average timing of reproductive activities in a seasonal model (i.e. assuming non-overlapping generations)
 
-G <- read_excel("Supplementary_data.xlsx", sheet = 'Seasonal_ancestral')
+Seasonal_anc <- read_excel("Supplementary_data.xlsx", sheet = 'Seasonal_ancestral')
 
-ggplot(data=S, aes(x=Emerg, y=Activity))+
-  geom_line(size=1)+
+ggplot(data=Seasonal_anc, aes(x=Emerg, y=Activity))+
+  geom_line(linewidth=1)+
   geom_point(size=3)+
-  geom_abline(intercept=0,slope=1,size=1,linetype="dotted")+
+  geom_abline(intercept=0,slope=1,linewidth=1,linetype="dotted")+
   scale_fill_grey() +
   geom_errorbar(aes(ymin=ymin, ymax=ymax), width=.05)+
   ylab("Average sexual activity time")+

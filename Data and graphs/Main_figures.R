@@ -1,4 +1,6 @@
 library(ggplot2)
+library(dplyr)
+library(readxl)
 library(ggpattern)
 library(truncnorm)
 library(patchwork)
@@ -28,7 +30,7 @@ ggplot(NG_e, aes(fill = Type, y = Percentage, x = Emergence,
 
 
 # Create a sequence of x values
-x_valsE <- seq(lower, upper, length.out = 100)
+x_valsE <- seq(0, 1, length.out = 100)
 # Compute the corresponding y values using dtruncnorm
 y_valsE <- dtruncnorm(x_valsE, mean = 0.15, sd = 0.05, a = 0, b = 1)
 
@@ -48,7 +50,7 @@ Early <- ggplot(data.frame(x = x_valsE, y = y_valsE), aes(x = x, y = y)) +
   theme(text = element_text(size = 22))
 
 
-x_valsL <- seq(lower, upper, length.out = 100)
+x_valsL <- seq(0, 1, length.out = 100)
 y_valsL <- dtruncnorm(x_valsL, mean = 0.5, sd = 0.05, a = 0, b = 1)
 
 Late <- ggplot(data.frame(x = x_valsL, y = y_valsL), aes(x = x, y = y)) + 
@@ -60,15 +62,15 @@ Late <- ggplot(data.frame(x = x_valsL, y = y_valsL), aes(x = x, y = y)) +
                     pattern_spacing = 0.02,
                     pattern_size = 0.2,
                     pattern = "circle") +
-  stat_function(fun=function(x) dtruncnorm(x, mean = 0.5, sd = sd_val, a = lower, b = upper))+
+  stat_function(fun=function(x) dtruncnorm(x, mean = 0.5, sd = 0.05, a = 0, b = 1))+
   theme_classic() +
   labs(x = "Day time", y = "")+
   theme(text = element_text(size = 22))
 
 Bimodal <- ggplot(data.frame(x = c(x_valsL,x_valsE), y = c(y_valsL,y_valsE)), aes(x = x, y = y)) + 
   geom_vline(xintercept = 0.3, linetype="dashed")+
-  stat_function(fun=function(x) dtruncnorm(x, mean = 0.15, sd = sd_val, a = lower, b = upper) 
-                + dtruncnorm(x, mean = 0.5, sd = sd_val, a = lower, b = upper))+
+  stat_function(fun=function(x) dtruncnorm(x, mean = 0.15, sd = 0.05, a = 0, b = 1) 
+                + dtruncnorm(x, mean = 0.5, sd = 0.05, a = 0, b = 1))+
   theme_classic() +
   labs(x = "Day time", y = "")+
   theme(text = element_text(size = 22))
