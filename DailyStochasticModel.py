@@ -16,7 +16,7 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
-plt.switch_backend('agg')
+plt.switch_backend('agg') #Comment and restart your kernel if you want to display graphs in console
 
 ########################## model global parameters ############################
 
