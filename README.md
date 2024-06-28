@@ -5,8 +5,13 @@ This python code simulates a stochastic, individual-based birth-and-death proces
 There is also a variant modelling the evolution of seasonal non-perennial species, using the similar equations for mating and death events.
 
 #How to use
+
 If you wish to run it using the multiprocessing feature, a linux build is recommanded, or a cluster as it is ressource intensive.
 
 To test the effet of one parameter, you must comment it at the start of the script, and modifiy the parameter at lines 371 and 378 (parameter_to_change = start_step + n*step), and line 451 in the Output element.
 
 This code will output text based results, made to be outputed by a cluster. The results will only be displayed on the console if run localy ! 
+
+#Data
+
+All of the resulting data is available in the "Data and graph" folder, along with R code to generate the figures of the main text and supplementary graphs.
