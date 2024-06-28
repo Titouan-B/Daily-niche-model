@@ -1,8 +1,8 @@
 #About the project 
 
-This python code simulates a stochastic, individual-based birth-and-death process (e.g. M ́el ́eard, 2016; Otto and Day, 2011), to study the evolution of daily periods of sexual activity timings within species, and its potential effect on population divergence and speciation.
+The python code "DailyStochModel.py"  simulates a stochastic, individual-based birth-and-death process (e.g. M ́el ́eard, 2016; Otto and Day, 2011), to study the evolution of daily periods of sexual activity timings within species, and its potential effect on population divergence and speciation.
 
-There is also a variant modelling the evolution of seasonal non-perennial species, using the similar equations for mating and death events.
+There is also a variant modelling the evolution of seasonal non-perennial species, using the similar equations for mating and death events. ("SeasonalStochModel.py")
 
 #How to use
 
