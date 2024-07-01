@@ -14,7 +14,7 @@ plt.switch_backend('agg')
 ########################## model global parameters ############################
 
 # To test the effect of a parameter, comment it and modify the parameter later : 
-# Modify the parameter you want to test in the if (line 364) and else (line 371), as well as in the Output (line 444).
+# Modify the parameter you want to test in the if (line 365) and else (line 372), as well as in the Output (line 445).
 
 beta = 3                      # encounter rate between active males and active virgin females
 d = 0.1                       # death rate applied to whole population
