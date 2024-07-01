@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Jun 27 18:20:35 2024
-
-@author: morpho2019
-"""
-
-# -*- coding: utf-8 -*-
 
 import random as r
 import numpy as np
@@ -37,13 +30,13 @@ upper = 1                     # used to bound drawing in truncated normal distri
 
 # K = 1000                    # carrying capacity regarding competition between females for access to host plants to lay eggs
 
-e1 = 0.5                      # peak emergence time 
+e1 = 0.5                      # peak sexual maturity time 
 
-ve1 = 0.05                    # emergence time variance
+ve1 = 0.05                    # sexual maturity time variance
 
 mu_g = 0.1                    # mutation rate for genes
 genome_size = 10              # number of genes of each individual
-incompatibility_lim = 0.4       # maximum genetic distance allowing breeding
+incompatibility_lim = 0.4     # maximum genetic distance allowing breeding
 
 ######################### individuals attributes ##############################
 
@@ -64,7 +57,7 @@ class individuals:                           # Individuals in our population bel
         self.gene = gene                     # np.array([a,b,c,d]) where a,b,c,d are between 0 and 1
         self.gene_male = []                  # for females to save the male genes when mated        
         self.nb_offsprings = nb_offsprings   # number of offsprings birthed for a female
-        self.emerg = emerg                   # emergence time of the individual
+        self.emerg = emerg                   # sexual maturity time of the individual
         
 ####################### mutations related functions ###########################
 
@@ -87,16 +80,16 @@ def g_transfer(femelle, male):
 ########### functions to obtain the population categories at time t ###########
 
 
-def list_virgin_patrolling_females(pop,ti): # get a list of patrolling virgin females in the population
+def list_virgin_patrolling_females(pop,ti): # get a list of active virgin females in the population
     fem_v = []
     for i in range(len(pop)): 
-        if pop[i].emerg > ti:   #patrol is before emergence, skip individual
+        if pop[i].emerg > ti:   #sexual activity is before sexual maturity, skip individual
             continue
         if pop[i].sex == "F" and pop[i].f == 0 and ((pop[i].ha - pop[i].wa) <= ti <= (pop[i].ha + pop[i].wa)):
             fem_v.append(pop[i])
     return(fem_v)
 
-def list_virgin_nonpatrolling_females(pop,ti): # get a list of patrolling virgin females in the population
+def list_virgin_nonpatrolling_females(pop,ti): # get a list of non-active virgin females in the population
     fem_v = []
     for i in range(len(pop)): 
         if pop[i].sex == "F" and pop[i].f == 0 and ((pop[i].ha - pop[i].wa) > ti 
@@ -104,7 +97,7 @@ def list_virgin_nonpatrolling_females(pop,ti): # get a list of patrolling virgin
             fem_v.append(pop[i])
     return(fem_v)
 
-def list_mated_females_1(pop): # get a list of mated females within species 1 in the population
+def list_mated_females_1(pop): # get a list of mated females
     fem_f1 = []
     for i in range(len(pop)): 
         if pop[i].sex == "F" and pop[i].f == 1 and pop[i].sp == 1:
@@ -112,17 +105,17 @@ def list_mated_females_1(pop): # get a list of mated females within species 1 in
     return(fem_f1)
 
 
-def list_patrolling_males_1(pop,ti): # get a list of patrolling males in sp 1 at time "ti" in the population
+def list_patrolling_males_1(pop,ti): # get a list of active males at time "ti" in the population
     mal_a1 = []
     for i in range(len(pop)):
-        if pop[i].emerg > ti:   #patrol is before emergence, skip individual
+        if pop[i].emerg > ti:   #sexual activity is before sexual maturity, skip individual
             continue
         if pop[i].sex == "M" and ((pop[i].ha - pop[i].wa) <= ti <= (pop[i].ha + pop[i].wa)):
             mal_a1.append(pop[i])
     return(mal_a1)
 
 
-def list_nonpatrolling_males(pop,ti): # get a list of non-patrolling males at time "ti" in the population, unregarding the species
+def list_nonpatrolling_males(pop,ti): # get a list of non-active males at time "ti" in the population
     mal_i = []
     for i in range(len(pop)): 
         if pop[i].sex == "M" and ((pop[i].ha - pop[i].wa) > ti 
@@ -130,7 +123,7 @@ def list_nonpatrolling_males(pop,ti): # get a list of non-patrolling males at ti
             mal_i.append(pop[i])
     return(mal_i)
 
-def list_eggs_weight(pop): 
+def list_eggs_weight(pop): # get a list of egg weight to compute mated females death ratios
     egg_weight= []
     for i in range(len(pop)): 
         # if pop[i].nb_offsprings !=0:
@@ -140,13 +133,13 @@ def list_eggs_weight(pop):
 ########################### time period cutting functions #####################
 
 
-def patrolling_schedule(pop):          # get a dictionary of hours of transition from non-patrolling to patrolling and vice versa for males of both sp
+def patrolling_schedule(pop):          # get a dictionary of hours of transition from non-active to active and vice versa
     ht = {}                                  # dictionnaries allows us to link events with their associated time
     for i in range(len(pop)): 
 
-        if pop[i].emerg > pop[i].ha + pop[i].wa:   #patrol is before emergence, skip individual
+        if pop[i].emerg > pop[i].ha + pop[i].wa:   #sexual activity is before sexual maturity, skip individual
             continue
-        if pop[i].ha - pop[i].wa < pop[i].emerg < pop[i].ha + pop[i].wa:   #emergence is during patrol
+        if pop[i].ha - pop[i].wa < pop[i].emerg < pop[i].ha + pop[i].wa:   #sexual maturity is during sexual activity
             if pop[i].sex == "M":
                 ht[pop[i].emerg] = "entering male " + str(i)
 
@@ -192,8 +185,8 @@ def emergences_and_schedule(pop,offspring_number,ve1,K):
     b = offspring_number * (1-len(Mated_females)/K)
     if b < 0 :
         b = 0
-    emergence_list = []                                         # list of all emergences of the day
-    emergence_schedule = {}                                     # dict of emergence schedule of offsprings
+    emergence_list = []                                         # list of all sexual maturity timings of the day
+    emergence_schedule = {}                                     # dict of sexual maturity timings schedule of offsprings
     for i in range(len(Mated_females)): 
         r_ind = r.randint(0, len(Mated_females[i].gene_male)-1)  #Choosing father
         if scipy.spatial.distance.hamming(Mated_females[i].gene, Mated_females[i].gene_male[r_ind], w=None) <= incompatibility_lim:
@@ -206,12 +199,12 @@ def emergences_and_schedule(pop,offspring_number,ve1,K):
                 patrol = stats.truncnorm.rvs((lower - (Mated_females[i].ha+Mated_females[i].ha_male)/2)/mu,(upper-(Mated_females[i].ha+Mated_females[i].ha_male)/2)/mu, (Mated_females[i].ha+Mated_females[i].ha_male)/2, mu)
                 
                 emergence_list.append(individuals(r.sample(["M","F"],1)[0],         # creation of new emerging individuals
-                                              patrol, # emerging individual inherit the patrolling window position of their father
+                                              patrol,               
                                               None,
                                               0.15,
                                               None,
-                                              0,                                                                               # emerging individual are virgins
-                                              pop[i].sp,            # emerging individual belong to the species of the parents
+                                              0,                    # emerging individual are virgins
+                                              pop[i].sp,            # deprecated
                                               genes,
                                               [],
                                               0,
@@ -219,10 +212,10 @@ def emergences_and_schedule(pop,offspring_number,ve1,K):
                     
                 pop[i].nb_offsprings += 1
                     
-    for k in range(len(emergence_list)):                        # drawing of emergence time for each new individual
+    for k in range(len(emergence_list)):                        # drawing of sexual maturity time for each new individual
         emergence_schedule[emergence_list[k].emerg] = "emergence individu " + str(k) + emergence_list[k].sex
     
-    return(emergence_list,emergence_schedule)                   # returns emergence list AND emergence with associated time
+    return(emergence_list,emergence_schedule)                   # returns sexual maturity list AND sexual maturity with associated time
 
 ########################### event drawing #####################################
 
@@ -250,8 +243,8 @@ def event(pop,ti, T, dlt_c, mating_threshold):                          # determ
             father = r.sample(list_patrolling_males_1(pop,ti), 1)[0]  # father is randomly sampled among active males
             mother = r.sample(list_virgin_patrolling_females(pop,ti),1)[0]    # mother is randomly sampled among active virgin females
             
-            mother.ha_male.append(father.ha)                        # mother stores father's patrolling window position
-            mother.wa_male.append(father.wa)                        # mother stores father's patrolling window width
+            mother.ha_male.append(father.ha)                        # mother stores father's sexual activity window position
+            mother.wa_male.append(father.wa)                        # mother stores father's sexual activity window width
             mother.gene_male.append(father.gene)                    # mother stores father's genome
             if len(mother.gene_male) == mating_threshold:     # mother becomes fertilized if she reaches the max number of mating events
                 mother.f = 1 
@@ -408,7 +401,7 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
             emergences_today = emergences_and_schedule(population,offspring_number,ve1,K)                        # retrieves emergence list and emergence schedule of the day
             population=emergences_today[0]
         
-        known_events = {**patrolling_schedule(population)}       # creates a dictionary of events (emergences and patrol shifts) supposedly happening on this day 
+        known_events = {**patrolling_schedule(population)}       # creates a dictionary of events (sexual maturity and sexual activity shifts) supposedly happening on this day 
 
         known_events[1] = "end day"                                                   # adding the end of the day event to known_events
         chronological_events = sorted(known_events.keys())                            # sort events of the day chronologically
@@ -441,12 +434,13 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
 
 
 
-simulation_days = 500         # Number of days for each replicate
-replications = 4    # Number of replications for each parameter
+simulation_days = 500       # Number of days for each replicate
+param = 1                   # Number of parameters tested
 
-param = 1                   # Number of steps per replication
-start_step = 1000               # First parameter value 
-step = 1                   # Step size in parameter value
+
+start_step = 1000           # First parameter value 
+replications = 4            # Number of replications per parameter
+step = 1                    # Step size in parameter value
 
 
 import multiprocessing
@@ -481,7 +475,7 @@ from operator import itemgetter
 print("append to bufferpop")
 popsort = sorted(bufferpop, key=itemgetter(12))        # Sort by replicate number 
 
-print("sorted")
+print("All results obtained and sorted")
 
 # Initialize output variable 
 pop1 = []
@@ -514,7 +508,7 @@ for i in range(replications*param):         # Sort all the output data into thei
     n = popsort[i][13]
 
 
-print('Calcul done')
+print('Input data sorted')
 val_n = qn.get()            # Get the number of parameters
 for i in range(val_n):      # Generate data for each parameter
     
@@ -616,18 +610,18 @@ for i in range(val_n):      # Generate data for each parameter
         
         # Uncomment to save figures of simulation outcomes
         
-        gen = []
-        for g in range(len(female_ha_list[rep][0])):
-            gen.extend([g]*len(female_ha_list[rep][0][g]))
+        #gen = []
+        #for g in range(len(female_ha_list[rep][0])):
+        #    gen.extend([g]*len(female_ha_list[rep][0][g]))
             
-        yCM = np.array([j for i in female_ha_list[rep][0] for j in i])
+        #yCM = np.array([j for i in female_ha_list[rep][0] for j in i])
         # # x = np.array(gen)
         
-        plt.figure()
-        plt.ylabel("Daily time")
-        plt.xlabel("Generation")
-        img = plt.hist2d(gen, yCM, bins = (simulation_days,60))
-        plt.savefig("HIST2D_"+str(i)+str(rep)+".png")
+        #plt.figure()
+        #plt.ylabel("Daily time")
+        #plt.xlabel("Generation")
+        #img = plt.hist2d(gen, yCM, bins = (simulation_days,60))
+        #plt.savefig("HIST2D_"+str(i)+str(rep)+".png")
         
         
         
@@ -679,8 +673,8 @@ for i in range(val_n):      # Generate data for each parameter
                     peaks_y.append(j)
                     if j == len(male_ha_list[rep][0])-1:
                         double_peaks += 1
-                        print('Ecart double early : ' + str(x[peaks][0]))  
-                        print('Ecart double late : ' + str(x[peaks][1]))  
+                        print('Early sub-pop sexual activity timing : ' + str(x[peaks][0]))  
+                        print('Late sub-pop sexual activity timing : ' + str(x[peaks][1]))  
 
                 peaks_nb.append(len(peaks))
             
@@ -762,10 +756,10 @@ for i in range(val_n):      # Generate data for each parameter
             
             if len(peaks) == 1:
                 if x[peaks] < 0.3 :
-                    print("Early population only, HAE :" + str(x[peaks][0]))
+                    print("Early population only, average sexual activity time :" + str(x[peaks][0]))
                     E+=1
                 elif x[peaks] > 0.3 :
-                    print('Late population only, HAL : ' + str(x[peaks][0]))  
+                    print('Late population only, average sexual activity time : ' + str(x[peaks][0]))  
                     L+= 1
                     
             if len(peaks_x)>39:
