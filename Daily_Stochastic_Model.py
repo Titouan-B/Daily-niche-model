@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Jun 27 18:20:35 2024
-
-@author: morpho2019
-"""
-
-# -*- coding: utf-8 -*-
 
 import random as r
 import numpy as np
@@ -16,11 +9,12 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
-# plt.switch_backend('agg')
+plt.switch_backend('agg')
 
 ########################## model global parameters ############################
 
-# To test the effect of a parameter, comment it and modify the parameter in the loop of the model (line 357)
+# To test the effect of a parameter, comment it and modify the parameter later : 
+# Modify the parameter you want to test in the if (line 364) and else (line 371), as well as in the Output (line 444).
 
 beta = 3                      # encounter rate between active males and active virgin females
 d = 0.1                       # death rate applied to whole population
@@ -362,7 +356,7 @@ def size_sp1_sp2(pop): # get the size of the population
 #################### simulation over several days with replicates  #####################
 
 
-# Modify the parameter you want to test in the if (line 361) and else (line 368)
+# Modify the parameter you want to test in the if (line 364) and else (line 371), as well as in the Output (line 444).
 
 def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function to loop through replications/parameters
     repli = queue.get()              
@@ -452,12 +446,13 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
                 n])
 
 
-simulation_days = 500        # Number of days for each replicate
-replications = 4      # Number of replications for each parameter
+simulation_days = 500     # Number of days for each replicate
+param = 1                 # Number of parameters tested
 
-param = 1                   # Number of steps per replication
-start_step = 1000              # First parameter value 
-step = 1000                  # Step size in parameter value
+
+replications = 4          # Number of replications for each parameter
+start_step = 1000         # First parameter value 
+step = 1000               # Step size in parameter value
 
 
 import multiprocessing
@@ -492,7 +487,7 @@ from operator import itemgetter
 print("append to bufferpop")
 popsort = sorted(bufferpop, key=itemgetter(12))        # Sort by replicate number 
 
-print("sorted")
+print("All results obtained and sorted")
 
 # Initialize output variable 
 pop1 = []
@@ -525,7 +520,7 @@ for i in range(replications*param):         # Sort all the output data into thei
     n = popsort[i][13]
 
 
-print('Calcul done')
+print('Input data sorted')
 val_n = qn.get()            # Get the number of parameters
 for i in range(val_n):      # Generate data for each parameter
     
@@ -625,19 +620,20 @@ for i in range(val_n):      # Generate data for each parameter
     L=0
     for rep in range(i*replications,(i+1)*replications):
         
-         # # Uncomment to save figures of simulation outcomes
+        # Uncomment to save figures of simulation outcomes
         
-        gen = []
-        for g in range(len(female_ha_list[rep][0])):
-            gen.extend([g]*len(female_ha_list[rep][0][g]))
+        #gen = []
+        #for g in range(len(female_ha_list[rep][0])):
+        #    gen.extend([g]*len(female_ha_list[rep][0][g]))
             
-        yCM = np.array([j for i in female_ha_list[rep][0] for j in i])
+        #yCM = np.array([j for i in female_ha_list[rep][0] for j in i])
+        # # x = np.array(gen)
         
-        plt.figure()
-        plt.ylabel("Daily time")
-        plt.xlabel("Generation")
-        img = plt.hist2d(gen, yCM, bins = (simulation_days,60))
-        plt.savefig("HIST2D_"+str(i)+str(rep)+".png")
+        #plt.figure()
+        #plt.ylabel("Daily time")
+        #plt.xlabel("Generation")
+        #img = plt.hist2d(gen, yCM, bins = (simulation_days,60))
+        #plt.savefig("HIST2D_"+str(i)+str(rep)+".png")
         
         
         
@@ -689,8 +685,8 @@ for i in range(val_n):      # Generate data for each parameter
                     peaks_y.append(j)
                     if j == len(male_ha_list[rep][0])-1:
                         double_peaks += 1
-                        print('Ecart double early : ' + str(x[peaks][0]))  
-                        print('Ecart double late : ' + str(x[peaks][1]))  
+                        print('Early sub-pop sexual activity timing : ' + str(x[peaks][0]))  
+                        print('Late sub-pop sexual activity timing : ' + str(x[peaks][1]))  
 
                 peaks_nb.append(len(peaks))
             
@@ -772,10 +768,10 @@ for i in range(val_n):      # Generate data for each parameter
             
             if len(peaks) == 1:
                 if x[peaks] < 0.3 :
-                    print("Early population only, HAE :" + str(x[peaks][0]))
+                    print("Early population only, average sexual activity time :" + str(x[peaks][0]))
                     E+=1
                 elif x[peaks] > 0.3 :
-                    print('Late population only, HAL : ' + str(x[peaks][0]))  
+                    print('Late population only, average sexual activity time : ' + str(x[peaks][0]))  
                     L+= 1
                     
             if len(peaks_x)>39:
