@@ -8,9 +8,9 @@ There is also a variant modelling the evolution of seasonal non-perennial specie
 
 If you wish to run it using the multiprocessing feature, a linux build is recommanded, or a cluster as it is ressource intensive.
 
-To test the effet of one parameter, you must comment it at the start of the script, and modifiy the parameter at lines 371 and 378 (parameter_to_change = start_step + n*step), and line 451 in the Output element.
+To test the effet of one parameter, you must comment it at the start of the script, and modifiy the parameter later as explained at the start of the script.
 
-This code will output text based results, made to be outputed by a cluster. The results will only be displayed on the console if run localy ! 
+This code will return text based results, made to be outputed by a cluster. The results will only be displayed on the console if run localy ! 
 
 #Data
 
