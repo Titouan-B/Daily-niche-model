@@ -734,7 +734,8 @@ for i in range(val_n):      # Generate data for each parameter
 
                     if abs(dicpeak2[d][0]-dicpeak2[c][0])<0.3 and d-lastpeakE<15:
                         early += 1
-
+                        lastpeakE = d 
+                        
                 if len(dictfused[d]) ==1:   
                     if dictfused[d][0] < 0.3 :
                         
