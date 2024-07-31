@@ -173,7 +173,8 @@ p1 <- ggplot(K_c, aes(x=K, y=Elen, group = 1)) +
   geom_errorbar(aes(ymin=Elen-sd, ymax=Elen+sd), width=.2) +
   theme_classic()+
   theme(text = element_text(size = 15))+
-  ylab("Average coexistence duration (in days)")+
+  ylim(0,200)+
+  ylab("Average coexistence duration (in time units)")+
   xlab(expression("Carrying capacity of the environment (" * italic(K) * ")"))
 
 
@@ -183,7 +184,7 @@ G_c$G <- as.factor(G_c$G)
 
 p2 <- ggplot(G_c, aes(x=G, y=Elength, group = 1)) +
   geom_point() +
-  geom_errorbar(aes(ymin=Elength-sd_L, ymax=Elength+sd_L), width=.2) +
+  geom_errorbar(aes(ymin=Elength-sd_L, ymax=Elength+sd_L), width=.4) +
   theme_classic()+
   theme(text = element_text(size = 15))+
   ylab(" ")+
@@ -191,14 +192,16 @@ p2 <- ggplot(G_c, aes(x=G, y=Elength, group = 1)) +
 
 
 dltc_c <- read_excel("Data.xlsx", sheet = 'Competition_Coexistence')
+dltc_c$dltc <- dltc_c$dltc*100
 
 p3 <- ggplot(dltc_c, aes(x=dltc, y=Elength)) +
   geom_point() +
-  geom_errorbar(aes(ymin=yminEL, ymax=ymaxEL), width=.05) +
   scale_x_continuous(trans=scales::pseudo_log_trans(base = 10))+
+  geom_errorbar(aes(ymin=yminEL, ymax=ymaxEL), width=.06) +
   ylab(" ")+
   xlab(expression("Strength of male-male competition (" * italic(delta["c"]) * ")"))+
-  theme_classic()
+  theme_classic()+
+  theme(text = element_text(size = 15))
   
   
 final_plot <- p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
