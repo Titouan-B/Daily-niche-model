@@ -1,6 +1,16 @@
 #About the project 
 
-The python code "DailyStochModel.py"  simulates a stochastic, individual-based birth-and-death process (e.g. Méléard, 2016; Otto and Day, 2011), to study the evolution of daily periods of sexual activity timings within species, and its potential effect on population divergence and speciation.
+The python code "Daily_Stochastic_Model.py"  simulates a stochastic, individual-based birth-and-death process (e.g. Méléard, 2016; Otto and Day, 2011), to study the evolution of daily periods of sexual activity timings within species, and its potential effect on population divergence and speciation.
+
+
+Also included are multiple variation of the base daily model :
+-DailyStochModel_sex_specific.py : Displaying the effects of sex-specific expression of the reproductive activity timing (ha)
+
+-DailyStochModel_coevolution.py : Displaying the effects of allowing coevolution of the reproductive activity timing (ha) and the emergence timing (e)
+
+-DailyStochModel_singlelociG : Displaying the effects of using a single continuous loci to represent the neutral genetic information, instead of a list of discrete loci.
+
+-DailyStochModel_logisticG.py :  Displaying the effects of using a logistic function to model the survival chance of offspring rather than a threshold, to model a more continuous effect of incompatibilites.
 
 There is also a variant modelling the evolution of seasonal non-perennial species, using the similar equations for mating and death events. ("SeasonalStochModel.py")
 

@@ -18,8 +18,8 @@ ggplot(NG_e, aes(fill = Type, y = Percentage, x = Emergence,
                    pattern_fill = "black", fill = "white", 
                    colour = "black", pattern_spacing = 0.02,
   ) +
-  scale_pattern_manual(values = c('Early' = 'stripe',
-                                  'Late' = 'circle',
+  scale_pattern_manual(values = c('Delayed-dawn' = 'stripe',
+                                  'Immediate' = 'circle',
                                   'Bimodal' = 'none')) +
   scale_pattern_angle_manual(name="Type", values = c(0, 45,45))+
   theme_classic() +
@@ -36,7 +36,7 @@ y_valsE <- dtruncnorm(x_valsE, mean = 0.15, sd = 0.05, a = 0, b = 1)
 
 # Create the plot
 Early <- ggplot(data.frame(x = x_valsE, y = y_valsE), aes(x = x, y = y)) + 
-  geom_vline(xintercept = 0.3, linetype="dashed")+
+  geom_vline(xintercept = 0.5, linetype="dashed")+
   geom_area_pattern(aes(pattern = "stripe"), 
                     fill = "white", 
                     pattern_fill = "black", 
@@ -54,7 +54,7 @@ x_valsL <- seq(0, 1, length.out = 100)
 y_valsL <- dtruncnorm(x_valsL, mean = 0.5, sd = 0.05, a = 0, b = 1)
 
 Late <- ggplot(data.frame(x = x_valsL, y = y_valsL), aes(x = x, y = y)) + 
-  geom_vline(xintercept = 0.3, linetype="dashed")+
+  
   geom_area_pattern(aes(pattern = "circle"), 
                     fill = "white", 
                     pattern_fill = "black", 
@@ -62,13 +62,14 @@ Late <- ggplot(data.frame(x = x_valsL, y = y_valsL), aes(x = x, y = y)) +
                     pattern_spacing = 0.02,
                     pattern_size = 0.2,
                     pattern = "circle") +
+  geom_vline(xintercept = 0.5, linetype="dashed")+
   stat_function(fun=function(x) dtruncnorm(x, mean = 0.5, sd = 0.05, a = 0, b = 1))+
   theme_classic() +
   labs(x = "Day time", y = "")+
   theme(text = element_text(size = 22))
 
 Bimodal <- ggplot(data.frame(x = c(x_valsL,x_valsE), y = c(y_valsL,y_valsE)), aes(x = x, y = y)) + 
-  geom_vline(xintercept = 0.3, linetype="dashed")+
+  geom_vline(xintercept = 0.5, linetype="dashed")+
   stat_function(fun=function(x) dtruncnorm(x, mean = 0.15, sd = 0.05, a = 0, b = 1) 
                 + dtruncnorm(x, mean = 0.5, sd = 0.05, a = 0, b = 1))+
   theme_classic() +
@@ -91,8 +92,8 @@ ggplot(NG_ve, aes(fill = Type, y = Percentage, x = ve,
                    pattern_fill = "black", fill = "white", 
                    colour = "black", pattern_spacing = 0.02,
   ) +
-  scale_pattern_manual(values = c('Early' = 'stripe',
-                                  'Late' = 'circle',
+  scale_pattern_manual(values = c('Delayed-dawn' = 'stripe',
+                                  'Immediate' = 'circle',
                                   'Bimodal' = 'none')) +
   scale_pattern_angle_manual(name="Type", values = c(0, 45,45))+
   theme_classic() +
@@ -105,12 +106,15 @@ ggplot(NG_ve, aes(fill = Type, y = Percentage, x = ve,
 dltc <- read_excel("Data.xlsx", sheet = 'Competition_Bimodal')
 
 dltc$dltc <- dltc$dltc*100
+
+# Values are * 100 to make the log scale in R works, otherwise it breaks
+
 p1 <- ggplot(dltc, aes(x=dltc, y=Percentage)) +
   geom_point(size=3) +
   geom_errorbar(aes(ymin=Percentage-sd100, ymax=Percentage+sd100), width=.1,
                 position=position_dodge(.2)) +
   scale_x_continuous(trans=scales::pseudo_log_trans(base = 10))+
-  xlab(expression("Strength of male-male competition (" * italic(delta["c"]) * ")")) +ylab("Percentage of bimodal distribution\nafter 500 generations")+
+  xlab(expression("Strength of male-male competition (" * italic(delta["c"]) * ")")) +ylab("Percentage of bimodal distribution\nafter 500 days")+
   ylim(0,100)+
   theme_classic()+
   theme(text = element_text(size = 17))
@@ -173,8 +177,7 @@ p1 <- ggplot(K_c, aes(x=K, y=Elen, group = 1)) +
   geom_errorbar(aes(ymin=Elen-sd, ymax=Elen+sd), width=.2) +
   theme_classic()+
   theme(text = element_text(size = 15))+
-  ylim(0,200)+
-  ylab("Average coexistence duration (in time units)")+
+  ylab("Average coexistence duration (in days)")+
   xlab(expression("Carrying capacity of the environment (" * italic(K) * ")"))
 
 
@@ -184,7 +187,7 @@ G_c$G <- as.factor(G_c$G)
 
 p2 <- ggplot(G_c, aes(x=G, y=Elength, group = 1)) +
   geom_point() +
-  geom_errorbar(aes(ymin=Elength-sd_L, ymax=Elength+sd_L), width=.4) +
+  geom_errorbar(aes(ymin=Elength-sd_L, ymax=Elength+sd_L), width=.2) +
   theme_classic()+
   theme(text = element_text(size = 15))+
   ylab(" ")+
@@ -192,16 +195,14 @@ p2 <- ggplot(G_c, aes(x=G, y=Elength, group = 1)) +
 
 
 dltc_c <- read_excel("Data.xlsx", sheet = 'Competition_Coexistence')
-dltc_c$dltc <- dltc_c$dltc*100
 
 p3 <- ggplot(dltc_c, aes(x=dltc, y=Elength)) +
   geom_point() +
+  geom_errorbar(aes(ymin=yminEL, ymax=ymaxEL), width=.05) +
   scale_x_continuous(trans=scales::pseudo_log_trans(base = 10))+
-  geom_errorbar(aes(ymin=yminEL, ymax=ymaxEL), width=.06) +
   ylab(" ")+
   xlab(expression("Strength of male-male competition (" * italic(delta["c"]) * ")"))+
-  theme_classic()+
-  theme(text = element_text(size = 15))
+  theme_classic()
   
   
 final_plot <- p1 + p2 + p3 + plot_annotation(tag_levels = 'A')

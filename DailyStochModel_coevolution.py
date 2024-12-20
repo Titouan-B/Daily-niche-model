@@ -8,17 +8,15 @@ warnings.simplefilter(action='ignore', category=RuntimeWarning)
 import random as r
 import numpy as np
 import scipy
-from scipy.stats import chi2_contingency
 import scipy.stats as stats
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import seaborn as sns
 import time
-import pandas as pd
-from scipy.optimize import curve_fit
 plt.switch_backend('agg')
-print('Script started, Original G, incompatibility_lim 2', flush=True)
+print('Script started', flush=True)
+print("E != HA - Long")
 ########################## model global parameters ############################
 
 # To test the effect of a parameter, comment it and modify the parameter later : 
@@ -45,8 +43,7 @@ ve1 = 0.05                    # emergence time standard deviation
 
 mu_g = 0.1                    # mutation rate for genes
 genome_size = 10              # number of genes of each individual
-#incompatibility_lim = 1      # maximum genetic distance allowing breeding
-
+# incompatibility_lim = 1       # maximum genetic distance allowing breeding
 
 ######################### individuals attributes ##############################
 
@@ -55,20 +52,20 @@ class individuals:                           # Individuals in our population bel
     Class to define the attributes of individals in the model
 
     """
-    def __init__(self, sex, ha, ha_male, wa, wa_male, f, sp, gene, gene_male, nb_offsprings,emerg,birthday,generation): # Each individual is defined by the following attributes :
+    def __init__(self, sex, ha, ha_male, wa, wa_male, e, e_male, f, sp, gene, gene_male, nb_offsprings,emerg): # Each individual is defined by the following attributes :
         self.sex = sex                       # Male or Female
         self.ha = ha                         # center of sexual activity timing
         self.ha_male = []                    # sexual activity timing storage for mating events
         self.wa = 0.15                       # sexual activity window  (fixed)
         self.wa_male = []                    # sexual activity window width storage for mating events
+        self.e = e
+        self.e_male = []
         self.f = f                           # fertilisation state 0 (virgin), 1 (mated)
         self.sp = sp                         # deprecated
         self.gene = gene                     # np.array([a,b,c,d]) where a,b,c,d are between 0 and 1
         self.gene_male = []                  # for females to save the male genes when mated        
         self.nb_offsprings = nb_offsprings   # number of offsprings birthed for a female
         self.emerg = emerg                   # emergence time of the individual
-        self.birthday = birthday
-        self.generation = generation
         
 ####################### mutations related functions ###########################
 
@@ -135,39 +132,38 @@ def list_eggs_weight(pop):  # Compute the egg weight when selecting a female to 
             egg_weight.append(pop[i].nb_offsprings)
     return(egg_weight)
 
-def logistic(diff,incompatibility_lim,k=50):    #Compute the number of offsprings based on genetic difference
-    return 1 - 1 / (1 + np.exp(-k * (diff - incompatibility_lim)))
-
-
 ########################### time period cutting functions #####################
 
 def patrolling_schedule(pop):          # get a dictionary of hours of transition from non-active to active and vice versa
     ht = {}                                  # dictionnaries allows us to link events with their associated time
     for i in range(len(pop)): 
         
-        if pop[i].emerg > pop[i].ha + pop[i].wa:   #sexual activity is before emergence, skip individual
-            pop[i].emerg=0       
-            continue
-        if pop[i].ha - pop[i].wa < pop[i].emerg < pop[i].ha + pop[i].wa:   #emergence is during sexual activity
-            if pop[i].sex == "M":
-                ht[pop[i].emerg] = "entering male " + str(i)
-                pop[i].emerg=0   
-            if pop[i].ha + pop[i].wa > 1 :   # avoids to exit [0,1]
-                ht[1] = "exiting male " + str(i)
-                pop[i].emerg=0   
-            else:
-                ht[pop[i].ha + pop[i].wa] = "exiting male " + str(i)    
-                pop[i].emerg=0  
-                
-            if pop[i].sex == "F":
-                ht[pop[i].emerg] = "entering female " + str(i)
-                pop[i].emerg=0   
-            if pop[i].ha + pop[i].wa > 1 :   # avoids to exit [0,1]
-                ht[1] = "exiting female " + str(i)
-                pop[i].emerg=0   
-            else:
-                ht[pop[i].ha + pop[i].wa] = "exiting female " + str(i)  
-                pop[i].emerg=0   
+        if pop[i].emerg == False :
+            if pop[i].e > pop[i].ha + pop[i].wa:   #sexual activity is before emergence, skip individual
+                pop[i].emerg == True      
+                continue
+            
+            if pop[i].ha - pop[i].wa < pop[i].e < pop[i].ha + pop[i].wa:   #emergence is during sexual activity
+                if pop[i].sex == "M":
+                    ht[pop[i].e] = "entering male " + str(i)
+                    pop[i].emerg == True      
+                if pop[i].ha + pop[i].wa > 1 :   # avoids to exit [0,1]
+                    ht[1] = "exiting male " + str(i)
+                    pop[i].emerg == True      
+                else:
+                    ht[pop[i].ha + pop[i].wa] = "exiting male " + str(i)    
+                    pop[i].emerg == True     
+                    
+                if pop[i].sex == "F":
+                    ht[pop[i].e] = "entering female " + str(i)
+                    pop[i].emerg == True     
+                if pop[i].ha + pop[i].wa > 1 :   # avoids to exit [0,1]
+                    ht[1] = "exiting female " + str(i)
+                    pop[i].emerg == True     
+            
+                else:
+                    ht[pop[i].ha + pop[i].wa] = "exiting female " + str(i)  
+                    pop[i].emerg == True     
                 
                 
         else : 
@@ -195,56 +191,51 @@ def patrolling_schedule(pop):          # get a dictionary of hours of transition
     return(ht,pop)
 
 
+
+def emergences_and_schedule(pop,incompatibility_lim,ve1,e1,K,mu):   
     
-def emergences_and_schedule(pop,incompatibility_lim,ve1,e1,K,mu,current_day):   
     Mated_females = [individu for individu in pop if individu.sex == "F" and len(individu.gene_male)>0]         
     b = offspring_number * (1-len(Mated_females)/K) # number of offspring per female per day is density dependant depending on mated females 
-    generation_time = []
     if b < 0 :
         b = 0
     emergence_list = []                                         # list of all emergences of the day
     emergence_schedule = {}                                     # dict of emergence schedule of offsprings
     for i in range(len(Mated_females)): 
         r_ind = r.randint(0, len(Mated_females[i].gene_male)-1)  #Choosing father
-        dist = scipy.spatial.distance.hamming(Mated_females[i].gene, Mated_females[i].gene_male[r_ind], w=None)
-        
-        if dist <= incompatibility_lim:
-
+        if scipy.spatial.distance.hamming(Mated_females[i].gene, Mated_females[i].gene_male[r_ind], w=None) <= incompatibility_lim:
+           
             offsp = np.random.poisson(b)   #Number of offsprings
             genes = g_transfer(Mated_females[i].gene, Mated_females[i].gene_male[r_ind])  #Generating offspring genotype
-        
             
             for j in range(offsp):  
                 ha = stats.truncnorm.rvs((lower - (Mated_females[i].ha+Mated_females[i].ha_male[r_ind])/2)/mu,(upper-(Mated_females[i].ha+Mated_females[i].ha_male[r_ind])/2)/mu, (Mated_females[i].ha+Mated_females[i].ha_male[r_ind])/2, mu)
+                e = stats.truncnorm.rvs((lower - (Mated_females[i].e+Mated_females[i].e_male[r_ind])/2)/ve1,(upper-(Mated_females[i].e+Mated_females[i].e_male[r_ind])/2)/ve1, (Mated_females[i].e+Mated_females[i].e_male[r_ind])/2, ve1)
+                
                 emergence_list.append(individuals(r.sample(["M","F"],1)[0],         # creation of new emerging individuals
-                                              ha, 
+                                              ha,
                                               None,
                                               0.15,
+                                              None,
+                                              e,
                                               None,
                                               0,                              # emerging individual are virgins
                                               Mated_females[i].sp,            # deprecated
                                               genes,
                                               [],
                                               0,
-                                              stats.truncnorm.rvs((lower - e1)/ve1,(upper-e1)/ve1, e1, ve1),
-                                              current_day,
-                                              None))
-                
-                if Mated_females[i].nb_offsprings == 0:
-                    generation_time.append((current_day - Mated_females[i].birthday) + (emergence_list[-1].emerg - Mated_females[i].emerg))
-                              
+                                              False))
+                                              
                 Mated_females[i].nb_offsprings += 1
-        
-            
+                    
     for k in range(len(emergence_list)):                        # drawing of emergence time for each new individual
-        emergence_schedule[emergence_list[k].emerg] = "emergence individu " + str(k) + emergence_list[k].sex
+        emergence_schedule[emergence_list[k].e] = "emergence individu " + str(k) + emergence_list[k].sex
     
-    return(emergence_list,emergence_schedule,generation_time)                   # returns emergence list AND emergence with associated time
+    return(emergence_list,emergence_schedule)                   # returns emergence list AND emergence with associated time
 
 ########################### event drawing #####################################
+    
 
-
-def event(pop,ti, T, dlt_c, mating_threshold,current_day):                          # determine if an event happens between ti and T, and chooses which one
+def event(pop,ti, T, dlt_c, mating_threshold):                          # determine if an event happens between ti and T, and chooses which one
     nb_patrolling_males_1 = len(list_patrolling_males_1(pop,ti))        # calculating each population category abundance
     nb_nonpatrolling_males = len(list_nonpatrolling_males(pop,ti))
     nb_virgin_patrolling_females = len(list_virgin_patrolling_females(pop,ti))
@@ -253,14 +244,13 @@ def event(pop,ti, T, dlt_c, mating_threshold,current_day):                      
     Etot = np.sum(list_eggs_weight(pop))
 
     Ei = []
-    lifespan = None
     
     lr = beta * (nb_patrolling_males_1) * nb_virgin_patrolling_females         # calculating lambda_r and lambda_d used in exponential law
     ld = d * (nb_virgin_nonpatrolling_females + nb_virgin_patrolling_females + nb_mated_females_1 + nb_patrolling_males_1 + nb_nonpatrolling_males) + dlt_e * (nb_patrolling_males_1 + nb_virgin_patrolling_females) + dlt_c * nb_patrolling_males_1 * (nb_patrolling_males_1 -1) + dlt_l * Etot
 
     if lr + ld == 0:                                            # specific case if population go extinct
         print("population extinct")                             # return t = 100 to indicate error
-        return(lifespan,100)
+        return(100)
     draw = np.random.exponential(1/(lr + ld))                 # drawing in exponential law of parameter lambda = lambda_r + lambda_d
     if draw < T - ti:
         uni = np.random.uniform(0,1)                            # drawing in unif(0,1) to set which event is happening
@@ -272,26 +262,21 @@ def event(pop,ti, T, dlt_c, mating_threshold,current_day):                      
             mother.ha_male.append(father.ha)                        # mother stores father's patrolling window position
             mother.wa_male.append(father.wa)                        # mother stores father's patrolling window width
             mother.gene_male.append(father.gene)                    # mother stores father's genome
-            
+            mother.e_male.append(father.e)       
             if len(mother.gene_male) == mating_threshold:     # mother becomes fertilized if she reaches the max number of mating events
                 mother.f = 1 
-            if mother.nb_offsprings == 0:
-                mother.generation = [current_day,ti]
                 
         elif uni < (lr/(lr+ld)) + (d * nb_nonpatrolling_males)/(lr + ld):       # event : death of non-active male
             dead = r.sample(list_nonpatrolling_males(pop,ti),1)[0]              # the dead is randomly chosen among non-active males at time ti
-            lifespan = current_day - dead.birthday
-            pop.remove(dead) 
+            pop.remove(dead)
             
         elif uni < (lr/(lr+ld)) + (d * (nb_nonpatrolling_males + nb_virgin_patrolling_females) + dlt_e * nb_virgin_patrolling_females)/(lr+ld):    # event : death of virgin active female  
             dead = r.sample(list_virgin_patrolling_females(pop,ti),1)[0]    
-            lifespan = current_day - dead.birthday
-            pop.remove(dead) 
+            pop.remove(dead)
         
         elif uni < (lr/(lr+ld)) + (d * (nb_nonpatrolling_males + nb_virgin_nonpatrolling_females + nb_virgin_patrolling_females) + dlt_e * nb_virgin_patrolling_females)/(lr+ld): # event : death of virgin non-active female    
             dead = r.sample(list_virgin_nonpatrolling_females(pop,ti),1)[0]                                      
-            lifespan = current_day - dead.birthday
-            pop.remove(dead) 
+            pop.remove(dead)
         
         elif uni < (lr/(lr+ld)) + (d * (nb_nonpatrolling_males + nb_virgin_nonpatrolling_females + nb_virgin_patrolling_females + nb_mated_females_1) + dlt_e * nb_virgin_patrolling_females + dlt_l * Etot)/(lr+ld):
             Esum = 0
@@ -300,18 +285,16 @@ def event(pop,ti, T, dlt_c, mating_threshold,current_day):                      
                 Esum += Ei.nb_offsprings 
         
                 if uni < (lr/(lr+ld)) + (d * (nb_nonpatrolling_males + nb_virgin_nonpatrolling_females + nb_virgin_patrolling_females) + d*(l+1) + dlt_e * nb_virgin_patrolling_females  + dlt_l*Esum)/(lr+ld): # the dead is chosen among mated females
-                    lifespan = current_day - Ei.birthday
                     pop.remove(Ei)
                     break
 
         elif uni < (lr/(lr+ld)) + (d * (nb_nonpatrolling_males + nb_virgin_nonpatrolling_females + nb_virgin_patrolling_females + nb_mated_females_1 + nb_patrolling_males_1) + dlt_e * (nb_patrolling_males_1 + nb_virgin_patrolling_females) + dlt_c * nb_patrolling_males_1 * (nb_patrolling_males_1 -1) + dlt_l * Etot)/(lr+ld):
                 dead = r.sample(list_patrolling_males_1(pop,ti),1)[0]
-                lifespan = current_day - dead.birthday
-                pop.remove(dead)  
+                pop.remove(dead) 
                     
-        return(lifespan,ti + draw)
+        return(ti + draw)
     else:
-        return(lifespan,T) # no event happens when the draw in exponential law falls after T - ti interval
+        return(T) # no event happens when the draw in exponential law falls after T - ti interval
 
 
 ######################## simulation study #####################################
@@ -321,16 +304,6 @@ def list_ha(pop): # get a list of the center of sexual activity of the populatio
     for i in range(len(pop)): 
             mal1.append(abs(pop[i].ha))
     return(mal1)
-
-
-def list_ha_and_g_of_males(pop): # get a list of the center of sexual activity of males
-    ha_l = []
-    g_l = []
-    for i in range(len(pop)): 
-        if pop[i].sex == "M":
-            ha_l.append(abs(pop[i].ha))
-            g_l.append(abs(pop[i].gene))
-    return(ha_l,g_l)
 
 def list_ha_of_males_sp1(pop): # get a list of the center of sexual activity of males
     mal1 = []
@@ -400,11 +373,7 @@ def list_gene(pop): # get a list of the genome of males
             gene_data.append(pop[i].gene) 
     return(gene_data)
 
-def list_e(pop): # get a list of the window of sexual activity of males (deprecated)
-    mal3 = []
-    for i in range(len(pop)): 
-            mal3.append(abs(pop[i].emerg)) 
-    return(mal3)
+
 #################### simulation over several days with replicates  #####################
 
 
@@ -427,16 +396,11 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
         queue.put(repli+1)        
     
     mean_ha_evolution_sp1 = []           # used to track the evolution of mean sexual activity timing
-    mean_wa_evolution_sp1 = [] 
-    ha_list = []                          # used to track the evolution of mean sexual activity window width (deprecated)
+    mean_wa_evolution_sp1 = []           # used to track the evolution of mean sexual activity window width (deprecated)
     male_ha_list = []
     female_ha_list = []
     pop_size_sp1 = []                    # used to track the evolution of population size
-    total_lifespan = []
-    total_generation = []
-    generation_time = []
-    survival_time = []
-    mean_e_evolution_sp1 = []
+    sex_evo = []
     
     # initialisation of the population
     population = []                                               # list of all individuals
@@ -451,15 +415,14 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
                                 None,
                                 0.15,
                                 None,
+                                ha,
+                                None,
                                 0,
                                 1,
                                 genome_size * [0],
                                 [],
                                 0,
-                                0,
-                                0,
-                                None))
-    
+                                True))
     
     
     
@@ -468,61 +431,55 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
         
         t = 0 # reset initial time to 0, corresponds to the start of the day
         
-        emergence_list,emergence_schedule,generation_times = emergences_and_schedule(population,incompatibility_lim,ve1,e1,K,mu,k)                      # retrieves emergence list and emergence schedule of the day
-        total_generation = generation_times
+        emergences_today = emergences_and_schedule(population,incompatibility_lim,ve1,e1,K,mu)                        # retrieves emergence list and emergence schedule of the day
         ht,pop = patrolling_schedule(population)
-        known_events = {**ht , **emergence_schedule }       # creates a dictionary of events (emergences and sexual activity shifts) supposedly happening on this day 
+        known_events = {**ht , **emergences_today[1] }       # creates a dictionary of events (emergences and sexual activity shifts) supposedly happening on this day 
         known_events[1] = "end day"                          # adding the end of the day event to known_events
         chronological_events = sorted(known_events.keys())   # sort events of the day chronologically
         
         for i in range(len(chronological_events)):                          
             if known_events.get(chronological_events[i])[2] == "e":     # determines if "known" event is an emergence           
-                population.append(emergence_list[int(known_events.get(chronological_events[i])[19:-1])]) # emerging individual is added to the population
+                population.append(emergences_today[0][int(known_events.get(chronological_events[i])[19:-1])]) # emerging individual is added to the population
     
             while t < chronological_events[i]:                          # until the next "known" event happens
-                lifespan,t = event(population,t,chronological_events[i],dlt_c,mating_threshold,k)   # determine if an event happens and which event, or if no event happens between ti and T
-                if lifespan !=None:
-                    total_lifespan.append(lifespan)
+                t = event(population,t,chronological_events[i],dlt_c,mating_threshold)   # determine if an event happens and which event, or if no event happens between ti and T
+            
             
         if t == 100:
             break
         
-        generation_time.append(total_generation)
-        survival_time.append(total_lifespan)
         mean_ha_evolution_sp1.append(np.mean(list_ha(population)))       # registers the mean sexual activity timing of males at the end of the day
-        mean_e_evolution_sp1.append(np.mean(list_e(population)))  # deprecated
+        mean_wa_evolution_sp1.append(np.mean(list_wa_of_males_sp1(population)))  # deprecated
         pop_size_sp1.append(size_sp1_sp2(population)[0])                 # registers the population size at the end of the day
-        ha_list.append(list_ha(population))            # registers male sexual activity timing
-        male_ha_list.append(list_ha_of_males_sp1(population))        # registers female sexual activity timing
-
-    
+        male_ha_list.append(list_ha_of_males_sp1(population))            # registers male sexual activity timing
+        female_ha_list.append(list_ha_of_females_sp1(population))        # registers female sexual activity timing
+        sex_evo.append(sex_ratio_sp1(population))                        # registers the sex ration evolution
+        
     
     Output.put([repli, 
                 [pop_size_sp1],
                 [mean_ha_evolution_sp1],
-                [mean_e_evolution_sp1],
+                [mean_wa_evolution_sp1],
                 [[list_ha_of_males_sp1(population)]],
-                [list_e(population)],
-                [ha_list],[male_ha_list],
+                [list_wa_of_males_sp1(population)],
+                [male_ha_list],[female_ha_list],
                 [sex_ratio_sp1(population)],
-                [survival_time],
-                list_gene(population),[generation_time], 
+                [""],
+                list_gene(population),[""], 
                 incompatibility_lim,
                 n])
 
 
-
 simulation_days = 500     # Number of days for each replicate
-param = 1                # Number of parameters tested
-    
+param = 3                 # Number of parameters tested
 
-replications = 100       # Number of replications for each parameter
-start_step = 1         # First parameter value 
+
+replications = 100        # Number of replications for each parameter
+start_step = 0.8         # First parameter value 
 step = 0.1               # Step size in parameter value
 
-Test_value = "incompatibility_lim"         # Put "e" if you want to test the effect of emergence values
-print(Test_value) 
-
+Test_value = "G"
+    
 import multiprocessing
 from time import perf_counter
 
@@ -560,6 +517,7 @@ popsort = sorted(bufferpop, key=itemgetter(12))        # Sort by replicate numbe
 
 print("All results obtained and sorted")
 
+
 # Initialize output variable 
 pop1 = []
 ha_list1  = []
@@ -591,12 +549,11 @@ for i in range(replications*param):         # Sort all the output data into thei
     beta.append(popsort[i][12])
     n = popsort[i][13]
 
-
+from scipy.optimize import curve_fit
 
 def gaus(x,a,x0,sigma):
     """
     For gaussian curve fitting
-    
     """
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
@@ -604,50 +561,6 @@ def std_binom(total,success):
     th_prob_success = success/total
     std = np.sqrt(th_prob_success * (1 - th_prob_success) / total)
     return std
-
-
-
-def count_linked_loci(ha_sup, ha_inf, significance_level=0.05):
-    """
-    Determines how many loci are statistically linked to group membership, using chi squared test.
-
-    Parameters:
-        ha_sup (list): List of loci for individuals in the 'late' group.
-        ha_inf (list): List of loci for individuals in the 'early' group.
-        significance_level (float): Threshold for p-value to consider significant.
-
-    Returns:
-        int: Number of loci that are statistically linked to the group.
-    """
-    # Combine the two groups into a single dataset
-    late_group = pd.DataFrame(ha_sup)
-    early_group = pd.DataFrame(ha_inf)
-    
-    # Add group labels (1 for late, 0 for early)
-    late_group['group'] = 1
-    early_group['group'] = 0
-    
-    # Combine both groups
-    data = pd.concat([late_group, early_group], ignore_index=True)
-    
-    # Number of loci
-    n_loci = len(data.columns) - 1  # Excluding 'group' column
-    
-    # Track significant loci
-    significant_loci_count = 0
-
-    # Iterate over loci to perform Chi-Square tests
-    for locus in range(n_loci):
-        # Create contingency table
-        contingency_table = pd.crosstab(data['group'], data[locus])
-        
-        # Perform Chi-Square test
-        chi2, p_value, _, _ = chi2_contingency(contingency_table)
-        
-        # Check if the p-value is significant
-        if p_value < significance_level:
-            significant_loci_count += 1
-    return significant_loci_count
 
 print('Input data sorted')
 val_n = qn.get()            # Get the number of parameters
@@ -752,10 +665,6 @@ for i in range(val_n):      # Generate data for each parameter
     fwmh_tot = []
     generation_mean = []
     lifespan_mean = []
-    linkage_des_percent = 0
-    linkage_des_size = []
-    linkage_des_percent2 = 0
-    linkage_des_size2 = []
     E=0
     L=0
     I=0
@@ -784,7 +693,7 @@ for i in range(val_n):      # Generate data for each parameter
         plt.close('all')
 
         
-        generation_mean.append(np.mean(generation_time[rep]))
+        # generation_mean.append(np.mean(generation_time[rep]))
         # lifespan_mean.append(np.mean(survival_time[rep]))
 
 
@@ -1096,118 +1005,86 @@ for i in range(val_n):      # Generate data for each parameter
             
             
             # get gene values and ha values
-            dic = {}
-            
-            list_h = male_ha_list[rep][0][-1]
-            list_g = gene[rep]
-            
-            for j,k in enumerate(male_ha_list[rep][0][-1]):
-                dic[k] = gene[rep][j]
-
-            
-            # get median ha
-            ha_mid = 0
+    #         dic = {}
+    #         for j,k in enumerate(male_ha_list[rep][0][-1]):
+    #             dic[k] = gene[rep][j]
+    #         # print('gene')
+    #         # print(gene[rep])
+    #         # print("dic")
+    #         # print(dic)
+    #         # get median ha
+    #         ha_mid = 0
     
-            if len(peaks)==2 and abs(x[peaks[0]]-x[peaks[1]]) > 0.15:
+    #         if len(peaks)==2 and abs(x[peaks[0]]-x[peaks[1]]) > 0.15:
                 
                 
-                # ha_mid = (x[peaks[0]] + x[peaks[1]])/2
-                ha_mid = x[min(range(len(y[min(peaks):max(peaks)])), key=y[min(peaks):max(peaks)].__getitem__)+min(peaks)]
-                print("HA MID : " + str(ha_mid))
+    #             # ha_mid = (x[peaks[0]] + x[peaks[1]])/2
+    #             ha_mid = x[min(range(len(y[min(peaks):max(peaks)])), key=y[min(peaks):max(peaks)].__getitem__)+min(peaks)]
+    #             print("HA MID : " + str(ha_mid))
                 
-            ha_sup = []
-            ha_inf = []
+    #         ha_sup = []
+    #         ha_inf = []
             
                 
-            ha_sup = np.array([x for key, x in dic.items() if key > ha_mid])
-            ha_inf = np.array([x for key, x in dic.items() if key <= ha_mid])
+    #         ha_sup = np.array([x for key, x in dic.items() if key > ha_mid])
+    #         ha_inf = np.array([x for key, x in dic.items() if key <= ha_mid])
             
             
             
             
             
-            
-
-            # FST calculation
+    #         # print(ha_sup)
+    #         # print(ha_inf)
+    #         # print(np.mean(ha_sup))
+    #         # print(np.mean(ha_inf))
+    #         # FST calculation
                 
     
                         
-            size_sup = len(ha_sup)
-            size_inf = len(ha_inf)
+    #         size_sup = len(ha_sup)
+    #         size_inf = len(ha_inf)
                 
-            if size_sup*size_inf !=0:
-                found_linkage = False
-            
-                # Linkage desequilibrium test
-                for loci in range(genome_size):
-                    group_0 = [list_h[ind] for ind in range(len(list_g)) if list_g[ind][loci] == 0]
-                    group_1 = [list_h[ind] for ind in range(len(list_g)) if list_g[ind][loci] == 1]
-                    
-                    t_stat, p_value_ttest = stats.ttest_ind(group_0, group_1)
-                    
-                    if p_value_ttest <0.05:
-                        linkage_des_size.append(loci)
-                        
-                        if found_linkage == False:
-                            linkage_des_percent += 1
-                            found_linkage=True
-                    
+    #         if size_sup*size_inf !=0:
+    
                 
-                linked_loci2 = count_linked_loci(ha_sup, ha_inf)
+    #             df = 0
+    #             for sup in range(size_sup):
+    #                 for inf in range(size_inf):
+    #                     df += scipy.spatial.distance.hamming(ha_sup[sup],ha_inf[inf], w=None)
                 
-                if linked_loci2 != 0:
-                    linkage_des_percent2 += 1
-                    linkage_des_size2.append(linked_loci2)
-                    
-                df = 0
-                for sup in range(size_sup):
-                    for inf in range(size_inf):
-                        df += scipy.spatial.distance.hamming(ha_sup[sup],ha_inf[inf], w=None)
-                
-                df = df/(size_sup*size_inf)
+    #             df = df/(size_sup*size_inf)
                 
                 
                 
-                dfsup = 0
-                for sup in range(size_sup):
-                    for sup2 in range(size_sup):
-                        dfsup += scipy.spatial.distance.hamming(ha_sup[sup],ha_sup[sup2])
+    #             dfsup = 0
+    #             for sup in range(size_sup):
+    #                 for sup2 in range(size_sup):
+    #                     dfsup += scipy.spatial.distance.hamming(ha_sup[sup],ha_sup[sup2])
                 
-                dfsup = dfsup/(size_sup**2)
+    #             dfsup = dfsup/(size_sup**2)
                 
-                dfinf = 0
-                for inf in range(size_inf):
-                    for inf2 in range(size_inf):
-                        dfinf += scipy.spatial.distance.hamming(ha_inf[inf],ha_inf[inf2])
+    #             dfinf = 0
+    #             for inf in range(size_inf):
+    #                 for inf2 in range(size_inf):
+    #                     dfinf += scipy.spatial.distance.hamming(ha_inf[inf],ha_inf[inf2])
                 
-                dfinf = dfinf/(size_inf**2)
+    #             dfinf = dfinf/(size_inf**2)
                 
                 
-                fstinf = max((df - dfsup)/df,0)
-                fstsup = max((df - dfinf)/df,0)
+    #             fstinf = max((df - dfsup)/df,0)
+    #             fstsup = max((df - dfinf)/df,0)
                 
         
-                mean_fst.append((fstsup+fstinf)/2)
-                print("FST"+str(rep)+" : " + str((fstsup+fstinf)/2))
+    #             mean_fst.append((fstsup+fstinf)/2)
+    #             print("FST"+str(rep)+" : " + str((fstsup+fstinf)/2))
                 
                 
                 
     
                 
-    print("Mean FST for this parameter value : "+ str(np.mean(mean_fst)))
-    print("Standart deviation of the Fst values : " + str(np.var(mean_fst)))
+    # print("Mean FST for this parameter value : "+ str(np.mean(mean_fst)))
+    # print("Standart deviation of the Fst values : " + str(np.var(mean_fst)))
     total = L + E + double_peaks
-    print("==========================================================================")
-    if double_peaks!=0:
-        print("Percentage of simulation with linkage desequilibrium : " + str(round((linkage_des_percent/double_peaks) * 100,2))+"% of the time, var : " + str(std_binom(replications,linkage_des_percent)))  
-        print("Average number of loci with linkage desequilibrium : " + str(np.mean(linkage_des_size)))
-        print("Standard deviation of the number of loci with linkage desequilibrium : " + str(np.std(linkage_des_size)))
-    print("==========================================================================")
-    if double_peaks!=0:
-        print("OLD Percentage of simulation with linkage desequilibrium : " + str(round((linkage_des_percent2/double_peaks) * 100,2))+"% of the time, var : " + str(std_binom(replications,linkage_des_percent2)))  
-        print("OLD Average number of loci with linkage desequilibrium : " + str(np.mean(linkage_des_size2)))
-        print("OLD Standard deviation of the number of loci with linkage desequilibrium : " + str(np.std(linkage_des_size2)))
-     
     print("==========================================================================")
     print("Only delayed-dusk " + str((L/replications)*100)+"% of the time, var : " + str(std_binom(replications,L)))  
     print("Only delayed-dawn : " + str((E/replications)*100)+"% of the time, var : " + str(std_binom(replications,E)))  
@@ -1222,9 +1099,9 @@ for i in range(val_n):      # Generate data for each parameter
     # print("==========================================================================")
     # print('Average life time : '+str(np.mean(lifespan_mean)))
     # print('Std life time : '+str(np.std(lifespan_mean)))
-    print("==========================================================================")
-    print('Average generation time : '+str(np.mean(generation_mean)))
-    print('Std generation time : '+str(np.std(generation_mean)))
+    # print("==========================================================================")
+    # print('Average generation time : '+str(np.mean(generation_mean)))
+    # print('Std generation time : '+str(np.std(generation_mean)))
     # print("Survived for " +str(np.mean(len(ha_list[rep]))) + " days")
     print('\n')
     
