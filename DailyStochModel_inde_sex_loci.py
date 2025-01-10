@@ -52,10 +52,12 @@ class individuals:                           # Individuals in our population bel
     Class to define the attributes of individals in the model
 
     """
-    def __init__(self, sex, ha, ha_male, wa, wa_male, f, sp, gene, gene_male, nb_offsprings,emerg,birthday): # Each individual is defined by the following attributes :
+    def __init__(self, sex, ha, ha_male, ha_female, ha_stored, wa, wa_male, f, sp, gene, gene_male, nb_offsprings,emerg,birthday): # Each individual is defined by the following attributes :
         self.sex = sex                       # Male or Female
         self.ha = ha                         # center of sexual activity timing
-        self.ha_male = []                    # sexual activity timing storage for mating events
+        self.ha_male = ha_male               # sexual activity timing storage for mating events
+        self.ha_female = ha_female
+        self.ha_stored = []                  # store male then female ha of the mate
         self.wa = 0.15                       # sexual activity window  (fixed)
         self.wa_male = []                    # sexual activity window width storage for mating events
         self.f = f                           # fertilisation state 0 (virgin), 1 (mated)
@@ -214,14 +216,19 @@ def emergences_and_schedule(pop,incompatibility_lim,ve1,e1,K,mu,current_day):
                 
                 r_sex = r.sample(["M","F"],1)[0]
                 
+                ha_male = stats.truncnorm.rvs((lower - (Mated_females[i].ha_stored[0]+Mated_females[i].ha_male)/2)/mu,(upper-(Mated_females[i].ha_stored[0]+Mated_females[i].ha_male)/2)/mu, (Mated_females[i].ha_stored[0]+Mated_females[i].ha_male)/2, mu)
+                ha_female = stats.truncnorm.rvs((lower - (Mated_females[i].ha_stored[1]+Mated_females[i].ha_female)/2)/mu,(upper-(Mated_females[i].ha_stored[1]+Mated_females[i].ha_female)/2)/mu, (Mated_females[i].ha_stored[1]+Mated_females[i].ha_female)/2, mu)
+        
                 if r_sex == "M":
-                    ha = stats.truncnorm.rvs((lower - Mated_females[i].ha_male[r_ind])/mu,(upper-Mated_females[i].ha_male[r_ind])/mu, Mated_females[i].ha_male[r_ind], mu)
+                    ha = ha_male
                 else:
-                    ha = stats.truncnorm.rvs((lower - Mated_females[i].ha)/mu,(upper-Mated_females[i].ha)/mu, Mated_females[i].ha, mu)
-                
+                    ha = ha_female
+                    
                 emergence_list.append(individuals(r_sex,         # creation of new emerging individuals
                                               ha, 
-                                              None,
+                                              ha_male,
+                                              ha_female,
+                                              [],
                                               0.15,
                                               None,
                                               0,                              # emerging individual are virgins
@@ -268,7 +275,7 @@ def event(pop,ti, T, dlt_c, mating_threshold,current_day):                      
             father = r.sample(list_patrolling_males_1(pop,ti), 1)[0]  # father is randomly sampled among active males
             mother = r.sample(list_virgin_patrolling_females(pop,ti),1)[0]    # mother is randomly sampled among active virgin females
             
-            mother.ha_male.append(father.ha)                        # mother stores father's patrolling window position
+            mother.ha_stored = [father.ha_male, father.ha_female]                        # mother stores father's patrolling window position
             mother.wa_male.append(father.wa)                        # mother stores father's patrolling window width
             mother.gene_male.append(father.gene)                    # mother stores father's genome
             if len(mother.gene_male) == mating_threshold:     # mother becomes fertilized if she reaches the max number of mating events
@@ -429,9 +436,12 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
     for j in range(initial_abund_1):                              # creation of the population
         initial_ha1 = 0.5
         ha = stats.truncnorm.rvs((lower - initial_ha1)/mu,(upper-initial_ha1)/mu, initial_ha1, mu)
+        ha_male,ha_female = ha,ha
         population.append(individuals(r.sample(["M","F"],1)[0],
-                                ha,
-                                None,
+                                ha, 
+                                ha_male,
+                                ha_female,
+                                [],
                                 0.15,
                                 None,
                                 0,
@@ -492,12 +502,12 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
 
 
 
-simulation_days = 250     # Number of days for each replicate
-param = 1                 # Number of parameters tested
+simulation_days = 500     # Number of days for each replicate
+param = 2                 # Number of parameters tested
 
 
-replications = 32          # Number of replications for each parameter
-start_step = 0.2         # First parameter value 
+replications = 100          # Number of replications for each parameter
+start_step = 0.7         # First parameter value 
 step = 0.1               # Step size in parameter value
 
 Test_value = "incompatibility_lim"         # Put "e" if you want to test the effect of emergence values
@@ -918,7 +928,8 @@ for i in range(val_n):      # Generate data for each parameter
                     plt.savefig("Gaussian_Width_"+str(i)+str(rep)+".png")
                     print('Full width at half maximum of the peak : ' + str(fwmh))
                     
-                    fwmh_tot_1_peak.append(fwmh)
+                    if fwmh < 1:
+                        fwmh_tot_1_peak.append(fwmh)
                 
                 except RuntimeError:
                     print("Could not fit curve")
@@ -966,7 +977,8 @@ for i in range(val_n):      # Generate data for each parameter
                     plt.vlines(r_half_max,ymin=0,ymax=half_max, linestyles='--')
                     plt.hlines(half_max, l_half_max, r_half_max, linestyles='--')
                     
-                    fwmh_tot_2_peak.append(fwmh)
+                    if fwmh < 1:
+                        fwmh_tot_2_peak.append(fwmh)
                     
                     print('Full width at half maximum of the early peak : ' + str(fwmh))
                     
@@ -990,7 +1002,8 @@ for i in range(val_n):      # Generate data for each parameter
                     # plt.show()
                     plt.savefig("Gaussian_Width_"+str(i)+str(rep)+".png")
                     
-                    fwmh_tot_2_peak.append(fwmh)
+                    if fwmh < 1:
+                        fwmh_tot_2_peak.append(fwmh)
                     
                     print('Full width at half maximum of the late peak : ' + str(fwmh))
                     
