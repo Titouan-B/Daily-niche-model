@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=RuntimeWarning)
+
 import random as r
 import numpy as np
 import scipy
@@ -9,6 +13,7 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
+from scipy.optimize import curve_fit
 plt.switch_backend('agg')
 
 ########################## model global parameters ############################
@@ -19,7 +24,7 @@ plt.switch_backend('agg')
 beta = 3                      # encounter rate between active males and active virgin females
 d = 0.1                       # death rate applied to whole population
 dlt_e = 0.1                   # energy linked death rate of active individuals
-dlt_c = 0.1                   # density dependant competition death rate based on male-male competition
+# dlt_c = 0.1                   # density dependant competition death rate based on male-male competition
 dlt_l = 0.1                   # egg laying cost for females
 offspring_number = 5          # mean offspring number per female per day 
 mu = 1/25                     # mutation size of sexual activity window position AND width (unimplemented for width)
@@ -29,7 +34,7 @@ mating_threshold = 1          # maximum number of mating events a female can go 
 lower = 0                     # used to bound drawing in truncated normal distributions
 upper = 1                     # used to bound drawing in truncated normal distribution
 
-# K = 1000                    # carrying capacity regarding competition between females for access to host plants to lay eggs
+K = 1000                    # carrying capacity regarding competition between females for access to host plants to lay eggs
 
 e1 = 0.5                      # peak sexual maturity time 
 
@@ -37,7 +42,7 @@ ve1 = 0.05                    # sexual maturity time variance
 
 mu_g = 0.1                    # mutation rate for genes
 genome_size = 10              # number of genes of each individual
-incompatibility_lim = 0.4     # maximum genetic distance allowing breeding
+incompatibility_lim = 0.4       # maximum genetic distance allowing breeding
 
 ######################### individuals attributes ##############################
 
@@ -358,14 +363,14 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
     repli = queue.get()              
     if repli !=0 and repli%(replications-1)==0:     # When we're not done with the replications of a parameter
         n = qn.get()
-        K = start_step + n*step          
+        dlt_c = start_step + n*step          
         qn.put(n+1)      
         queue.put(0)
 
     else :                                # When we have to move on to the next parameter
         n = qn.get()
         qn.put(n)      
-        K = start_step + n*step         
+        dlt_c = start_step + n*step         
     
         queue.put(repli+1)                   
 
@@ -430,19 +435,21 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
                 [sex_ratio_sp1(population)],
                 sex_evo,
                 list_gene_of_males(population),list_gene_of_females(population), 
-                K,
+                dlt_c,
                 n])
 
 
 
-simulation_days = 500       # Number of days for each replicate
-param = 1                   # Number of parameters tested
+simulation_days = 500    # Number of days for each replicate
+param = 1                # Number of parameters tested
+    
 
+replications = 100       # Number of replications for each parameter
+start_step = 2         # First parameter value 
+step = 1               # Step size in parameter value
 
-start_step = 1000           # First parameter value 
-replications = 4            # Number of replications per parameter
-step = 1                    # Step size in parameter value
-
+Test_value = "delta_c"
+print(Test_value)
 
 import multiprocessing
 from time import perf_counter
@@ -507,6 +514,20 @@ for i in range(replications*param):         # Sort all the output data into thei
     gene_f.append(popsort[i][11]) 
     beta.append(popsort[i][12])
     n = popsort[i][13]
+
+
+def gaus(x,a,x0,sigma):
+    """
+    For gaussian curve fitting
+    
+    """
+    return a*np.exp(-(x-x0)**2/(2*sigma**2))
+
+def std_binom(total,success):
+    th_prob_success = success/total
+    std = np.sqrt(th_prob_success * (1 - th_prob_success) / total)
+    return std
+
 
 
 print('Input data sorted')
@@ -605,8 +626,15 @@ for i in range(val_n):      # Generate data for each parameter
     moy_peak = []
     double_peaks = 0
     mean_fst = []
+    
+    peaks_distance = []
+    fwmh_tot_1_peak = []
+    fwmh_tot_2_peak = []
+    
     E=0
     L=0
+    I=0
+    end_fv_2_peak = []
     for rep in range(i*replications,(i+1)*replications):
         
         # Uncomment to save figures of simulation outcomes
@@ -675,7 +703,8 @@ for i in range(val_n):      # Generate data for each parameter
                     if j == len(male_ha_list[rep][0])-1:
                         double_peaks += 1
                         print('Early sub-pop sexual activity timing : ' + str(x[peaks][0]))  
-                        print('Late sub-pop sexual activity timing : ' + str(x[peaks][1]))  
+                        print('Late sub-pop sexual activity timing : ' + str(x[peaks][1])) 
+                        end_fv_2_peak.append(fv)
 
                 peaks_nb.append(len(peaks))
             
@@ -757,95 +786,260 @@ for i in range(val_n):      # Generate data for each parameter
             print(CEarly, CLate)    
             
             if len(peaks) == 1:
-                if x[peaks] < 0.3 :
-                    print("Early population only, average sexual activity time :" + str(x[peaks][0]))
-                    E+=1
-                elif x[peaks] > 0.3 :
-                    print('Late population only, average sexual activity time : ' + str(x[peaks][0]))  
-                    L+= 1
+                
+                if Test_value == "e":
                     
-            if len(peaks_x)>39:
-                temp = 1
-                for i in range(len(peaks_x)-1):
-                    if abs(peaks_x[i][0] - peaks_x[i+1][0])<0.15 and peaks_y[i+1]-peaks_y[i]<15:
-                        temp+=1
+                    if beta[i*replications]-0.05 < x[peaks][0] < beta[i*replications]+0.05 :
+                            
+                        print("Immediate population only, average sexual activity time :" + str(x[peaks][0]))
+                        I+=1
                         
-                    else :
-                        cluster_length.append(temp)
-                        temp = 1
-                cluster_length.append(temp)
-            for i in range(len(cluster_length)-1,-1,-1):
-                if cluster_length[i]<40:
-                    del cluster_length[i]
-                 
-
-        moy_peak.append(peaks_nb)  
-        peaks_track = moy_peak
-
-        # FST computing
-        
-
-        # get gene values and ha values
-        dic = {}
-        for j,k in enumerate(male_ha_list[rep][0][-1]):
-            dic[k] = gene_m[rep][j]
-        
-        # get median ha
-        ha_mid = 0
-
-        if len(peaks)==2 and abs(x[peaks[0]]-x[peaks[1]]) > 0.15:
-
-            ha_mid = (x[peaks[0]] + x[peaks[1]])/2
-        
-        ha_sup = []
-        ha_inf = []
-        
+                    elif x[peaks][0] > beta[i*replications]+0.05 :
+                        print('Delayed-dusk population only, average sexual activity time : ' + str(x[peaks][0]))  
+                        L+= 1
+                        
+                    elif x[peaks][0] < beta[i*replications]-0.05 :
+                        print('Delayed-dawn population only, average sexual activity time : ' + str(x[peaks][0]))  
+                        E+= 1
+                    
+                
+                else :
+                     
+                      if e1-0.05 < x[peaks][0] <e1+0.05 :
+                              
+                          print("Immediate population only, average sexual activity time :" + str(x[peaks][0]))
+                          I+=1
+                          
+                      elif x[peaks][0] > e1+0.05 :
+                          print('Delayed-dusk population only, average sexual activity time : ' + str(x[peaks][0]))  
+                          L+= 1
+                          
+                      elif x[peaks][0] < e1-0.05 :
+                          print('Delayed-dawn population only, average sexual activity time : ' + str(x[peaks][0]))  
+                          E+= 1
             
-        ha_sup = np.array([x for key, x in dic.items() if key > ha_mid])
-        ha_inf = np.array([x for key, x in dic.items() if key <= ha_mid])
             
-        # FST calculation
+       
+                # Fitting gaussian curve
+                n = len(x)                          #the number of data points
+                mean = sum(x*y)/n                   
+                sigma = sum(y*(x-mean)**2)/n        
+                
+                try:
+                    popt,pcov = curve_fit(gaus,x,y,p0=[1,mean,sigma])
+                    fwmh = abs(2*np.sqrt(2*np.log(2))*popt[-1])
+                    
+                    half_max = gaus(popt[1], *popt) /2
+                    l_half_max = popt[1] - fwmh/2
+                    r_half_max = popt[1] + fwmh/2
+                    
+                    # plt.plot(x,y,'b+:',label='data')
+                    # plt.plot(x,gaus(x,*popt),'ro:',label='fit')
+                    # plt.vlines(x=l_half_max,ymin=0,ymax=half_max, linestyles='--')
+                    # plt.vlines(r_half_max,ymin=0,ymax=half_max, linestyles='--')
+                    # plt.hlines(half_max, l_half_max, r_half_max, linestyles='--')
+                    # # plt.show()
+                    # plt.savefig("Gaussian_Width_"+str(i)+str(rep)+".png")
+                    print('Full width at half maximum of the peak : ' + str(fwmh))
+                    if fwmh < 1:
+                        fwmh_tot_1_peak.append(fwmh)
+                
+                except RuntimeError:
+                    print("Could not fit curve")
+                    
+                
+                
+            elif len(peaks) == 2:
+                        
+                
+                x1 = np.array([])
+                y1 = np.array([])
+                x2 = np.array([])
+                y2 = np.array([])
+                
+    
+                mid_peaks = x[min(range(len(y[min(peaks):max(peaks)])), key=y[min(peaks):max(peaks)].__getitem__)+min(peaks)]
+                
+                for p in range(len(x)):
+                    
+                    if x[p] < mid_peaks : 
+                        x1 = np.append(x1,x[p])
+                        y1 = np.append(y1,y[p])
+                    
+                    else:
+                        x2 = np.append(x2,x[p])
+                        y2 = np.append(y2,y[p])
+                    
+                n = len(x1)                          
+                mean = sum(x1*y1)/n                   
+                sigma = sum(y1*(x1-mean)**2)/n    
+                
+                try:
+                    popt,pcov = curve_fit(gaus,x1,y1,p0=[1,mean,sigma])
+                    
+                    
+                    fwmh = abs(2*np.sqrt(2*np.log(2))*popt[-1])
+                    
+                    half_max = gaus(popt[1], *popt) /2
+                    l_half_max = popt[1] - fwmh/2
+                    r_half_max = popt[1] + fwmh/2
+                    
+                    # plt.plot(x1,y1,'b+:',label='data')
+                    # plt.plot(x1,gaus(x1,*popt),'ro:',label='fit')
+                    # plt.vlines(x=l_half_max,ymin=0,ymax=half_max, linestyles='--')
+                    # plt.vlines(r_half_max,ymin=0,ymax=half_max, linestyles='--')
+                    # plt.hlines(half_max, l_half_max, r_half_max, linestyles='--')
+                    if fwmh < 1:
+                        fwmh_tot_2_peak.append(fwmh)
+                    
+                    print('Full width at half maximum of the early peak : ' + str(fwmh))
+                    
+                    n = len(x2)                          
+                    mean = sum(x2*y2)/n                   
+                    sigma = sum(y2*(x2-mean)**2)/n  
+                    popt,pcov = curve_fit(gaus,x2,y2,p0=[1,mean,sigma])
+                    
+                    fwmh = abs(2*np.sqrt(2*np.log(2))*popt[-1])
+                    
+                    half_max = gaus(popt[1], *popt) /2
+                    l_half_max = popt[1] - fwmh/2
+                    r_half_max = popt[1] + fwmh/2
+                    
+                    
+                    # plt.plot(x2,y2,'b+:',label='data')
+                    # plt.plot(x2,gaus(x2,*popt),'ro:',label='fit')
+                    # plt.vlines(x=l_half_max,ymin=0,ymax=half_max, linestyles='--')
+                    # plt.vlines(r_half_max,ymin=0,ymax=half_max, linestyles='--')
+                    # plt.hlines(half_max, l_half_max, r_half_max, linestyles='--')
+                    # # plt.show()
+                    # plt.savefig("Gaussian_Width_"+str(i)+str(rep)+".png")
+                    if fwmh < 1:
+                        fwmh_tot_2_peak.append(fwmh)
+                    
+                    print('Full width at half maximum of the late peak : ' + str(fwmh))
+                    
+                    peaks_distance.append(x[max(peaks)]-x[min(peaks)])
+                    
+                    print('Distance between peaks : '+str(x[max(peaks)]-x[min(peaks)]))
+                
+                except RuntimeError:
+                    print("Could not fit curve")
+                    
+                
+                
+                if len(peaks_x)>39:
+                    temp = 1
+                    for i in range(len(peaks_x)-1):
+                        if abs(peaks_x[i][0] - peaks_x[i+1][0])<0.15 and peaks_y[i+1]-peaks_y[i]<15:
+                            temp+=1
+                            
+                        else :
+                            cluster_length.append(temp)
+                            temp = 1
+                    cluster_length.append(temp)
+                for i in range(len(cluster_length)-1,-1,-1):
+                    if cluster_length[i]<40:
+                        del cluster_length[i]
+                     
+    
+            moy_peak.append(peaks_nb)  
+            peaks_track = moy_peak
+    
+            # FST computing
             
-        if len(ha_sup)*len(ha_inf) !=0:
-            df = 0
-            for sup in range(len(ha_sup)):
+    
+            # get gene values and ha values
+            dic = {}
+            for j,k in enumerate(male_ha_list[rep][0][-1]):
+                dic[k] = gene_m[rep][j]
+            
+            # get median ha
+            ha_mid = 0
+    
+            if len(peaks)==2 and abs(x[peaks[0]]-x[peaks[1]]) > 0.15:
+    
+                ha_mid = (x[peaks[0]] + x[peaks[1]])/2
+            
+            ha_sup = []
+            ha_inf = []
+            
+                
+            ha_sup = np.array([x for key, x in dic.items() if key > ha_mid])
+            ha_inf = np.array([x for key, x in dic.items() if key <= ha_mid])
+                
+            # FST calculation
+                
+            if len(ha_sup)*len(ha_inf) !=0:
+                df = 0
+                for sup in range(len(ha_sup)):
+                    for inf in range(len(ha_inf)):
+                        df += scipy.spatial.distance.hamming(ha_sup[sup],ha_inf[inf], w=None)
+                
+                df = df/(len(ha_sup)*len(ha_inf))
+                
+                
+                
+                dfsup = 0
+                for sup in range(len(ha_sup)):
+                    for sup2 in range(len(ha_sup)):
+                        dfsup += scipy.spatial.distance.hamming(ha_sup[sup],ha_sup[sup2])
+                
+                dfsup = dfsup/(len(ha_sup)**2)
+                
+                dfinf = 0
                 for inf in range(len(ha_inf)):
-                    df += scipy.spatial.distance.hamming(ha_sup[sup],ha_inf[inf], w=None)
-            
-            df = df/(len(ha_sup)*len(ha_inf))
-            
-            
-            
-            dfsup = 0
-            for sup in range(len(ha_sup)):
-                for sup2 in range(len(ha_sup)):
-                    dfsup += scipy.spatial.distance.hamming(ha_sup[sup],ha_sup[sup2])
-            
-            dfsup = dfsup/(len(ha_sup)**2)
-            
-            dfinf = 0
-            for inf in range(len(ha_inf)):
-                for inf2 in range(len(ha_inf)):
-                    dfinf += scipy.spatial.distance.hamming(ha_inf[inf],ha_inf[inf2])
-            
-            dfinf = dfinf/(len(ha_inf)**2)
+                    for inf2 in range(len(ha_inf)):
+                        dfinf += scipy.spatial.distance.hamming(ha_inf[inf],ha_inf[inf2])
+                
+                dfinf = dfinf/(len(ha_inf)**2)
+                
+                
+                fstinf = max((df - dfsup)/df,0)
+                fstsup = max((df - dfinf)/df,0)
+                
+        
+                mean_fst.append((fstsup+fstinf)/2)
+                print("FST"+str(rep)+" : " + str((fstsup+fstinf)/2))
+                
             
             
-            fstinf = max((df - dfsup)/df,0)
-            fstsup = max((df - dfinf)/df,0)
-            
+    for f in range(len(end_fv_2_peak)):
+        sns.kdeplot(
+                np.array(end_fv_2_peak[f]),
+                bw_method=0.15,
+                clip=[0, 1],
+                color="lightgray",  # Overlay all distributions in light gray
+                alpha=0.7,
+                legend=False        # Avoid multiple legends
+            )
     
-            mean_fst.append((fstsup+fstinf)/2)
-            print("FST"+str(rep)+" : " + str((fstsup+fstinf)/2))
-            
+    plt.xlabel("Activity Timing", fontsize=12)
+    plt.ylabel("Density", fontsize=12)
+    plt.title("Overlapping KDE Plots of Simulation Endings", fontsize=14)
+    plt.savefig("combined_2peak_kdeplot.png", dpi=300)  
+    
+    
+    def std_binom(total,success):
+        th_prob_success = success/total
+        std = np.sqrt(th_prob_success * (1 - th_prob_success) / total)
+        return std
+    
     print("Mean FST for this parameter value : "+ str(np.mean(mean_fst)))
-    
+    print("Standart deviation of the Fst values : " + str(np.var(mean_fst)))
     total = L + E + double_peaks
-    
-    print("Only late " + str((L/replications)*100)+"% of the time")  
-    print("Only early : " + str((E/replications)*100)+"% of the time")  
-    print("Both " +str(((double_peaks/replications))*100)+"% of the time")  
-    
-    print("Percentage of double peaks at "+str(simulation_days) + " generations : " + str(double_peaks/replications))
+    print("==========================================================================")
+    print("Only delayed-dusk " + str((L/replications)*100)+"% of the time, var : " + str(std_binom(replications,L)))  
+    print("Only delayed-dawn : " + str((E/replications)*100)+"% of the time, var : " + str(std_binom(replications,E)))  
+    print("Only immediate : " + str((I/replications)*100)+"% of the time, var : " + str(std_binom(replications,I)))  
+    print("Bimodal case " + str(((double_peaks/replications))*100)+"% of the time, var : " + str(std_binom(replications,double_peaks)))  
+    print("==========================================================================")
+    print("Average distance between peaks : " + str(np.mean(peaks_distance)))
+    print("Standart deviation of the distance between peaks : " + str(np.std(peaks_distance)))
+    print("==========================================================================")
+    print("Average width of double peaks : " + str(np.mean(fwmh_tot_2_peak)))
+    print("Standard deviation of the double width : " + str(np.std(fwmh_tot_2_peak)))
+    print("==========================================================================")
+    print("Average width of single peaks : " + str(np.mean(fwmh_tot_1_peak)))
+    print("Standard deviation of the single width : " + str(np.std(fwmh_tot_1_peak)))
     print('\n')
     
