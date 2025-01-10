@@ -4,7 +4,7 @@ The python code "Daily_Stochastic_Model.py"  simulates a stochastic, individual-
 
 
 Also included are multiple variation of the base daily model :
--DailyStochModel_sex_specific.py : Displaying the effects of sex-specific expression of the reproductive activity timing (ha)
+-DailyStochModel_inde_sex_loci.py : Displaying the effects of independent control of the reproductive activity timing trait (ha) in males and females respectively.
 
 -DailyStochModel_coevolution.py : Displaying the effects of allowing coevolution of the reproductive activity timing (ha) and the emergence timing (e)
 
