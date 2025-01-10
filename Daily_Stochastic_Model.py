@@ -18,11 +18,11 @@ import time
 import pandas as pd
 from scipy.optimize import curve_fit
 plt.switch_backend('agg')
-print('Script started, Original G, incompatibility_lim 2', flush=True)
+print('Script started', flush=True)
 ########################## model global parameters ############################
 
 # To test the effect of a parameter, comment it and modify the parameter later : 
-# Modify the parameter you want to test in the if (line 365) and else (line 372), as well as in the Output (line 445).
+# Modify the parameter you want to test in the if (line 418) and else (line 428), as well as in the Output (line 510).
 
 beta = 3                      # encounter rate between active males and active virgin females
 d = 0.1                       # death rate applied to whole population
@@ -45,7 +45,7 @@ ve1 = 0.05                    # emergence time standard deviation
 
 mu_g = 0.1                    # mutation rate for genes
 genome_size = 10              # number of genes of each individual
-#incompatibility_lim = 1      # maximum genetic distance allowing breeding
+# incompatibility_lim = 1      # maximum genetic distance allowing breeding
 
 
 ######################### individuals attributes ##############################
@@ -507,20 +507,21 @@ def ReplicatesSimulation(queue,qn,simulation_days, Output):     # Main function 
                 [sex_ratio_sp1(population)],
                 [survival_time],
                 list_gene(population),[generation_time], 
+                population,
                 incompatibility_lim,
                 n])
 
 
 
-simulation_days = 500     # Number of days for each replicate
-param = 1                # Number of parameters tested
+simulation_days = 500    # Number of days for each replicate
+param = 9                # Number of parameters tested
     
 
 replications = 100       # Number of replications for each parameter
-start_step = 1         # First parameter value 
+start_step = 0.1         # First parameter value 
 step = 0.1               # Step size in parameter value
 
-Test_value = "incompatibility_lim"         # Put "e" if you want to test the effect of emergence values
+Test_value = "incompatibility"         # Put "e" if you want to test the effect of emergence values
 print(Test_value) 
 
 import multiprocessing
@@ -556,7 +557,7 @@ for i in range(Output.qsize()):
     bufferpop.append(Output.get())
 from operator import itemgetter
 print("append to bufferpop")
-popsort = sorted(bufferpop, key=itemgetter(12))        # Sort by replicate number 
+popsort = sorted(bufferpop, key=itemgetter(13))        # Sort by replicate number 
 
 print("All results obtained and sorted")
 
@@ -571,6 +572,7 @@ male_ha_list = []
 sex1 = []
 generation_time = []
 survival_time = []
+population = []
 beta = []
 gene = []
 gene_f = []
@@ -588,8 +590,9 @@ for i in range(replications*param):         # Sort all the output data into thei
     generation_time.append(popsort[i][9])
     gene.append(popsort[i][10])
     survival_time.append(popsort[i][11]) 
-    beta.append(popsort[i][12])
-    n = popsort[i][13]
+    population.append(popsort[i][12]) 
+    beta.append(popsort[i][13])
+    n = popsort[i][14]
 
 
 
@@ -606,48 +609,6 @@ def std_binom(total,success):
     return std
 
 
-
-def count_linked_loci(ha_sup, ha_inf, significance_level=0.05):
-    """
-    Determines how many loci are statistically linked to group membership, using chi squared test.
-
-    Parameters:
-        ha_sup (list): List of loci for individuals in the 'late' group.
-        ha_inf (list): List of loci for individuals in the 'early' group.
-        significance_level (float): Threshold for p-value to consider significant.
-
-    Returns:
-        int: Number of loci that are statistically linked to the group.
-    """
-    # Combine the two groups into a single dataset
-    late_group = pd.DataFrame(ha_sup)
-    early_group = pd.DataFrame(ha_inf)
-    
-    # Add group labels (1 for late, 0 for early)
-    late_group['group'] = 1
-    early_group['group'] = 0
-    
-    # Combine both groups
-    data = pd.concat([late_group, early_group], ignore_index=True)
-    
-    # Number of loci
-    n_loci = len(data.columns) - 1  # Excluding 'group' column
-    
-    # Track significant loci
-    significant_loci_count = 0
-
-    # Iterate over loci to perform Chi-Square tests
-    for locus in range(n_loci):
-        # Create contingency table
-        contingency_table = pd.crosstab(data['group'], data[locus])
-        
-        # Perform Chi-Square test
-        chi2, p_value, _, _ = chi2_contingency(contingency_table)
-        
-        # Check if the p-value is significant
-        if p_value < significance_level:
-            significant_loci_count += 1
-    return significant_loci_count
 
 print('Input data sorted')
 val_n = qn.get()            # Get the number of parameters
@@ -749,16 +710,20 @@ for i in range(val_n):      # Generate data for each parameter
     double_peaks = 0
     mean_fst = []
     peaks_distance = []
-    fwmh_tot = []
+    fwmh_tot_1_peak = []
+    fwmh_tot_2_peak = []
     generation_mean = []
     lifespan_mean = []
     linkage_des_percent = 0
-    linkage_des_size = []
+    linkage_des_size1 = []
     linkage_des_percent2 = 0
     linkage_des_size2 = []
     E=0
     L=0
     I=0
+    
+    end_fv_1_peak = []
+    end_fv_2_peak = []
     for rep in range(i*replications,(i+1)*replications):
         
         # Uncomment to save figures of simulation outcomes
@@ -781,7 +746,7 @@ for i in range(val_n):      # Generate data for each parameter
         #Detection the position of the peaks to classify them as early or late
         peaks_nb = []
         fv = []
-        plt.close('all')
+        # plt.close('all')
 
         
         generation_mean.append(np.mean(generation_time[rep]))
@@ -815,9 +780,10 @@ for i in range(val_n):      # Generate data for each parameter
                 #Finding peaks with kdeplot
                 for k in range(len(MF_ha_list)):
                     fv.append(MF_ha_list[k])
-                    
-                sns.kdeplot(np.array(fv),bw_method = 0.15, clip = [0,1],color = colors[j], legend = 'day' + str(j))
+                   
+                sns.kdeplot(np.array(fv),bw_method = 0.15, clip = [0,1],color = "lightgray", legend = 'day' + str(j))
                 plt.xlim(0,1)
+                
                 x = plt.gca().lines[-1].get_xdata() # Get the x data of the distribution
                 y = plt.gca().lines[-1].get_ydata() # Get the y data of the distribution
 
@@ -839,6 +805,8 @@ for i in range(val_n):      # Generate data for each parameter
                         print('Early sub-pop sexual activity timing : ' + str(x[peaks][0])) 
 
                         print('Late sub-pop sexual activity timing : ' + str(x[peaks][1]))  
+                        end_fv_2_peak.append(fv)
+                        
                         
                 elif len(peaks)==2 and abs(x[peaks[0]]-x[peaks[1]]) <= 0.15:
                     peaks = np.array([round(np.mean(peaks))])
@@ -847,11 +815,14 @@ for i in range(val_n):      # Generate data for each parameter
                 if len(peaks)==1:
                     peak1_x.append(x[peaks])
                     peak1_y.append(j)
-                        
+                    if j == len(ha_list[rep][0])-1:
+                        end_fv_1_peak.append(fv)
+                
+                    
+                    
                 peaks_nb.append(len(peaks))
             
-            plt.savefig("Graph : Parameter " + str(i) + ", Rep : " + str(rep) + ".png")
-            plt.close()
+
 
             key1 = peak1_y
             value1 = peak1_x
@@ -951,7 +922,7 @@ for i in range(val_n):      # Generate data for each parameter
                         print('Delayed-dawn population only, average sexual activity time : ' + str(x[peaks][0]))  
                         E+= 1
                     
-                
+                # Errors are normal here if test value = e
                 else :
                      
                       if e1-0.05 < x[peaks][0] <e1+0.05 :
@@ -987,9 +958,9 @@ for i in range(val_n):      # Generate data for each parameter
                     plt.hlines(half_max, l_half_max, r_half_max, linestyles='--')
                     # plt.show()
                     plt.savefig("Gaussian_Width_"+str(i)+str(rep)+".png")
-                    print('Full width at half maximum of the early peak : ' + str(fwmh))
+                    print('Full width at half maximum of the peak : ' + str(fwmh))
                     
-                    fwmh_tot.append(fwmh)
+                    fwmh_tot_1_peak.append(fwmh)
                 
                 except RuntimeError:
                     print("Could not fit curve")
@@ -1037,7 +1008,7 @@ for i in range(val_n):      # Generate data for each parameter
                     plt.vlines(r_half_max,ymin=0,ymax=half_max, linestyles='--')
                     plt.hlines(half_max, l_half_max, r_half_max, linestyles='--')
                     
-                    fwmh_tot.append(fwmh)
+                    fwmh_tot_2_peak.append(fwmh)
                     
                     print('Full width at half maximum of the early peak : ' + str(fwmh))
                     
@@ -1061,7 +1032,7 @@ for i in range(val_n):      # Generate data for each parameter
                     # plt.show()
                     plt.savefig("Gaussian_Width_"+str(i)+str(rep)+".png")
                     
-                    fwmh_tot.append(fwmh)
+                    fwmh_tot_2_peak.append(fwmh)
                     
                     print('Full width at half maximum of the late peak : ' + str(fwmh))
                     
@@ -1098,8 +1069,19 @@ for i in range(val_n):      # Generate data for each parameter
             # get gene values and ha values
             dic = {}
             
-            list_h = male_ha_list[rep][0][-1]
-            list_g = gene[rep]
+            def list_h_and_g(population):
+                list_h = []
+                list_g = []
+                for p in range(len(population)):
+                    if population[p].sex == "M":
+                        list_h.append(population[p].ha)
+                        list_g.append(population[p].gene)
+                return list_h,list_g
+            
+            list_h,list_g = list_h_and_g(population[rep])
+            
+            # list_h = male_ha_list[rep][0][-1]
+            # list_g = gene[rep]
             
             for j,k in enumerate(male_ha_list[rep][0][-1]):
                 dic[k] = gene[rep][j]
@@ -1117,7 +1099,7 @@ for i in range(val_n):      # Generate data for each parameter
                 
             ha_sup = []
             ha_inf = []
-            
+            linkage_des_size = 0
                 
             ha_sup = np.array([x for key, x in dic.items() if key > ha_mid])
             ha_inf = np.array([x for key, x in dic.items() if key <= ha_mid])
@@ -1139,26 +1121,34 @@ for i in range(val_n):      # Generate data for each parameter
                 found_linkage = False
             
                 # Linkage desequilibrium test
+                group_0 = []
+                group_1 = []
+                
                 for loci in range(genome_size):
-                    group_0 = [list_h[ind] for ind in range(len(list_g)) if list_g[ind][loci] == 0]
-                    group_1 = [list_h[ind] for ind in range(len(list_g)) if list_g[ind][loci] == 1]
+                    for ind in range(len(population[rep])):
+                        if population[rep][ind].sex == "M":
+                            if population[rep][ind].gene[loci] == 0:
+                                group_0.append(population[rep][ind].ha)
+                            else:
+                                group_1.append(population[rep][ind].ha)
+                    # group_0 = [list_h[ind] for ind in range(len(list_g)) if list_g[ind][loci] == 0]
+                    # group_1 = [list_h[ind] for ind in range(len(list_g)) if list_g[ind][loci] == 1]
                     
                     t_stat, p_value_ttest = stats.ttest_ind(group_0, group_1)
                     
                     if p_value_ttest <0.05:
-                        linkage_des_size.append(loci)
+                        linkage_des_size += 1
                         
                         if found_linkage == False:
                             linkage_des_percent += 1
                             found_linkage=True
-                    
+                  
+                if linkage_des_size !=0:
+                    linkage_des_size1.append(linkage_des_size)
                 
-                linked_loci2 = count_linked_loci(ha_sup, ha_inf)
+
                 
-                if linked_loci2 != 0:
-                    linkage_des_percent2 += 1
-                    linkage_des_size2.append(linked_loci2)
-                    
+                
                 df = 0
                 for sup in range(size_sup):
                     for inf in range(size_inf):
@@ -1192,22 +1182,51 @@ for i in range(val_n):      # Generate data for each parameter
                 
                 
                 
+    plt.close('all')
+    plt.figure()
     
-                
+    for f in range(len(end_fv_1_peak)):
+        sns.kdeplot(
+                np.array(end_fv_1_peak[f]),
+                bw_method=0.15,
+                clip=[0, 1],
+                color="lightgray",  # Overlay all distributions in light gray
+                alpha=0.7,
+                legend=False        # Avoid multiple legends
+            )
+    
+    plt.xlabel("Activity Timing", fontsize=12)
+    plt.ylabel("Density", fontsize=12)
+    plt.title("Overlapping KDE Plots of Simulation Endings", fontsize=14)
+    plt.savefig("combined_1peak_kdeplot.png", dpi=300)  
+    
+    plt.close('all')
+    plt.figure()
+    
+    for f in range(len(end_fv_2_peak)):
+        sns.kdeplot(
+                np.array(end_fv_2_peak[f]),
+                bw_method=0.15,
+                clip=[0, 1],
+                color="lightgray",  # Overlay all distributions in light gray
+                alpha=0.7,
+                legend=False        # Avoid multiple legends
+            )
+    
+    plt.xlabel("Activity Timing", fontsize=12)
+    plt.ylabel("Density", fontsize=12)
+    plt.title("Overlapping KDE Plots of Simulation Endings", fontsize=14)
+    plt.savefig("combined_2peak_kdeplot.png", dpi=300)  
+           
     print("Mean FST for this parameter value : "+ str(np.mean(mean_fst)))
     print("Standart deviation of the Fst values : " + str(np.var(mean_fst)))
     total = L + E + double_peaks
     print("==========================================================================")
     if double_peaks!=0:
         print("Percentage of simulation with linkage desequilibrium : " + str(round((linkage_des_percent/double_peaks) * 100,2))+"% of the time, var : " + str(std_binom(replications,linkage_des_percent)))  
-        print("Average number of loci with linkage desequilibrium : " + str(np.mean(linkage_des_size)))
-        print("Standard deviation of the number of loci with linkage desequilibrium : " + str(np.std(linkage_des_size)))
-    print("==========================================================================")
-    if double_peaks!=0:
-        print("OLD Percentage of simulation with linkage desequilibrium : " + str(round((linkage_des_percent2/double_peaks) * 100,2))+"% of the time, var : " + str(std_binom(replications,linkage_des_percent2)))  
-        print("OLD Average number of loci with linkage desequilibrium : " + str(np.mean(linkage_des_size2)))
-        print("OLD Standard deviation of the number of loci with linkage desequilibrium : " + str(np.std(linkage_des_size2)))
-     
+        print("Average number of loci with linkage desequilibrium : " + str(np.mean(linkage_des_size1)))
+        print("Standard deviation of the number of loci with linkage desequilibrium : " + str(np.std(linkage_des_size1)))
+        print(linkage_des_size1)
     print("==========================================================================")
     print("Only delayed-dusk " + str((L/replications)*100)+"% of the time, var : " + str(std_binom(replications,L)))  
     print("Only delayed-dawn : " + str((E/replications)*100)+"% of the time, var : " + str(std_binom(replications,E)))  
@@ -1217,9 +1236,12 @@ for i in range(val_n):      # Generate data for each parameter
     print("Average distance between peaks : " + str(np.mean(peaks_distance)))
     print("Standart deviation of the distance between peaks : " + str(np.std(peaks_distance)))
     print("==========================================================================")
-    print("Average width of peaks : " + str(np.mean(fwmh_tot)))
-    print("Standard deviation of the width : " + str(np.std(fwmh_tot)))
-    # print("==========================================================================")
+    print("Average width of double peaks : " + str(np.mean(fwmh_tot_2_peak)))
+    print("Standard deviation of the double width : " + str(np.std(fwmh_tot_2_peak)))
+    print("==========================================================================")
+    print("Average width of single peaks : " + str(np.mean(fwmh_tot_1_peak)))
+    print("Standard deviation of the single width : " + str(np.std(fwmh_tot_1_peak)))
+    print("==========================================================================")
     # print('Average life time : '+str(np.mean(lifespan_mean)))
     # print('Std life time : '+str(np.std(lifespan_mean)))
     print("==========================================================================")
