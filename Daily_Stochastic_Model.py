@@ -1069,20 +1069,7 @@ for i in range(val_n):      # Generate data for each parameter
             # get gene values and ha values
             dic = {}
             
-            def list_h_and_g(population):
-                list_h = []
-                list_g = []
-                for p in range(len(population)):
-                    if population[p].sex == "M":
-                        list_h.append(population[p].ha)
-                        list_g.append(population[p].gene)
-                return list_h,list_g
-            
-            list_h,list_g = list_h_and_g(population[rep])
-            
-            # list_h = male_ha_list[rep][0][-1]
-            # list_g = gene[rep]
-            
+
             for j,k in enumerate(male_ha_list[rep][0][-1]):
                 dic[k] = gene[rep][j]
 
@@ -1131,9 +1118,7 @@ for i in range(val_n):      # Generate data for each parameter
                                 group_0.append(population[rep][ind].ha)
                             else:
                                 group_1.append(population[rep][ind].ha)
-                    # group_0 = [list_h[ind] for ind in range(len(list_g)) if list_g[ind][loci] == 0]
-                    # group_1 = [list_h[ind] for ind in range(len(list_g)) if list_g[ind][loci] == 1]
-                    
+
                     t_stat, p_value_ttest = stats.ttest_ind(group_0, group_1)
                     
                     if p_value_ttest <0.05:
