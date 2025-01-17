@@ -1113,7 +1113,7 @@ for i in range(val_n):      # Generate data for each parameter
                 
                 for loci in range(genome_size):
                     for ind in range(len(population[rep])):
-                        if population[rep][ind].sex == "M":
+                        #if population[rep][ind].sex == "M": uncomment for faster sim with similar results
                             if population[rep][ind].gene[loci] == 0:
                                 group_0.append(population[rep][ind].ha)
                             else:
